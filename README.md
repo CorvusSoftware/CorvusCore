@@ -35,15 +35,19 @@ Pour ne compiler que les moteurs, ajoutez `-DCORVUSCORE_BUILD_LIBRETRO=OFF -DBUI
 
 ## Utiliser avec RetroArch
 
-1. Téléchargez `corvuscore-libretro-vX.Y.Z-linux-x86_64.tar.gz` depuis les [releases](https://github.com/CorvusSoftware/CorvusCore/releases). Pour la version en développement, prenez l'artefact d'une [exécution CI](https://github.com/CorvusSoftware/CorvusCore/actions/workflows/ci.yml).
-2. Copiez `cores/*.so` dans le dossier des cœurs de RetroArch, et `info/*.info` dans son dossier `info`.
-3. Chargez le cœur voulu :
+1. Téléchargez l'archive adaptée à votre plateforme depuis les [releases](https://github.com/CorvusSoftware/CorvusCore/releases), ou les artefacts d'une [exécution CI](https://github.com/CorvusSoftware/CorvusCore/actions/workflows/ci.yml) pour la version de développement.
+2. Extrayez les fichiers `cores/*_libretro.*` dans le dossier **Cœurs** configuré par RetroArch, et les fichiers `info/*.info` dans son dossier **Informations des cœurs** (Paramètres → Dossiers).
+3. Chargez le cœur voulu dans **Menu principal → Charger un cœur**.
 
-| Fichier | Console |
-| --- | --- |
-| `corvuscore_gb_libretro.so` | Game Boy (DMG) |
-| `corvuscore_gbc_libretro.so` | Game Boy Color, compatible Game Boy |
-| `corvuscore_gba_libretro.so` | Game Boy Advance |
+| Plateforme | Binaires Libretro | Archive de release |
+| --- | --- | --- |
+| Linux x86-64 | `.so` | `corvuscore-libretro-vX.Y.Z-linux-x86_64.zip` |
+| Windows x86-64 | `.dll` | `corvuscore-libretro-vX.Y.Z-windows-x86_64.zip` |
+| macOS (architecture du runner) | `.dylib` | `corvuscore-libretro-vX.Y.Z-macos-{x86_64,arm64}.zip` |
+| Android ARM64 | `.so` | `corvuscore-libretro-vX.Y.Z-android-arm64-v8a.zip` |
+| Android ARMv7 | `.so` | `corvuscore-libretro-vX.Y.Z-android-armeabi-v7a.zip` |
+
+Trois bibliothèques sont fournies par plateforme : `corvuscore_gb_libretro` (Game Boy), `corvuscore_gbc_libretro` (Game Boy Color) et `corvuscore_gba_libretro` (Game Boy Advance). Utilisez **RetroArch 64 bits** avec les binaires Windows x86-64 ; les `.so` Linux ne fonctionnent pas sous Windows. Sur Android, l'installation de cœurs personnalisés dépend de la version et des permissions de RetroArch.
 
 Les cœurs gèrent la vibration (MBC5 Rumble, Drill Dozer, WarioWare: Twisted!) et les capteurs des cartouches, pilotés au stick analogique gauche :
 
@@ -64,7 +68,7 @@ La sauvegarde et l'horloge d'un jeu GBA sont détectées automatiquement. La dé
 
 Les cœurs déclarent à RetroArch la mémoire que surveille RetroAchievements : les succès s'activent comme avec les autres cœurs, et RetroArch applique lui-même les règles du mode Hardcore. RetroAchievements n'a pas encore testé CorvusCore.
 
-> Les binaires publiés visent uniquement **Linux x86-64**. Les cœurs ne sont pas proposés par le téléchargeur intégré de RetroArch.
+> Les cœurs ne sont pas proposés par le téléchargeur intégré de RetroArch. Les archives de release multi-plateformes sont construites par le workflow `.github/workflows/release.yml` ; leurs équivalents de développement sont les artefacts de `.github/workflows/ci.yml`.
 
 ## Intégrer dans un projet
 

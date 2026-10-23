@@ -1,4 +1,4 @@
-# CorvusCore — Provenance, droits d'auteur et licences
+# CorvusCore - Provenance, droits d'auteur et licences
 
 **© 2026 CorvusSoftware.** CorvusCore est la nouvelle identité du projet RavenCore créé par **GhostPunishR**. Le code reste distribué sous **GNU AGPL-3.0-only** (`LICENSE`). Les contributions antérieures et les droits de leurs auteurs sont conservés ; la nouvelle identité ne supprime aucune attribution. Les identifiants publics (namespace, API C, CMake, Libretro) ont été renommés de `ravenemu`/`RavenCore` vers `corvuscore`/`CorvusCore` et nécessitent une adaptation des intégrations existantes.
 

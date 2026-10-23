@@ -1,4 +1,4 @@
-# CorvusCore — copyright et licence
+# CorvusCore - copyright et licence
 
 **Copyright © 2026 CorvusSoftware.**
 

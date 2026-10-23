@@ -293,7 +293,7 @@ int main() {
     retro_unload_game();
 
     // Drill Dozer (V49) : LDR r0, =0x080000C4 ; MOV r1, #8 ; STRH r1, [r0, #2] ;
-    // STRH r1, [r0] ; B . — la broche 3 du GPIO allume le moteur.
+    // STRH r1, [r0] ; B . - la broche 3 du GPIO allume le moteur.
     auto rumble_rom = corvuscore::testing::minimal_gba_rom();
     const std::uint32_t motor_on[]{0xe59f000cU, 0xe3a01008U, 0xe1c010b2U, 0xe1c010b0U, 0xeafffffeU, 0x080000c4U};
     for (std::size_t index = 0; index < std::size(motor_on); ++index)

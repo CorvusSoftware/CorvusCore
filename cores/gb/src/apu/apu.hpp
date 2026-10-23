@@ -85,8 +85,8 @@ public:
         // sept dixièmes de seconde, quand le défilement en dure plusieurs. À
         // l'entrée en $0100, le carillon est donc éteint depuis longtemps.
         //
-        // Le canal reste *signalé* allumé dans NR52 — sa longueur n'a jamais
-        // été armée, NR14 bit 6 étant à zéro — mais il ne produit plus rien.
+        // Le canal reste *signalé* allumé dans NR52 - sa longueur n'a jamais
+        // été armée, NR14 bit 6 étant à zéro - mais il ne produit plus rien.
         // Reproduire le volume initial faisait sonner un créneau à pleine
         // amplitude pendant les huit premiers dixièmes de seconde de chaque
         // partie, avant la musique du titre.
@@ -121,7 +121,7 @@ public:
     /**
      * Écriture d'un registre audio.
      *
-     * Le mixeur peut s'y connecter ou s'en déconnecter — un DAC qu'on allume,
+     * Le mixeur peut s'y connecter ou s'en déconnecter - un DAC qu'on allume,
      * NR52 qu'on coupe. Quand cela survient au milieu d'une fenêtre déjà
      * entamée, la fenêtre est à cheval sur deux régimes et sa moyenne ne
      * représente ni l'un ni l'autre ; [emit_sample] la traite à part.
@@ -665,7 +665,7 @@ private:
      * Le filtre ne laisse passer que l'écart entre l'entrée et la charge : un
      * condensateur à zéro devant un convertisseur qui repose déjà sur un
      * niveau non nul produit une marche de toute la hauteur de ce niveau, puis
-     * sa décroissance — un claquement de quelques millisecondes.
+     * sa décroissance - un claquement de quelques millisecondes.
      *
      * Sur le matériel, la question ne se pose pas : quand le jeu prend la main,
      * la ROM d'amorçage a alimenté le convertisseur depuis plusieurs secondes
@@ -693,7 +693,7 @@ private:
         }
         if (mixer_changed_mid_window_) {
             // Fenêtre à cheval sur une reconnexion du mixeur. Une partie s'est
-            // écoulée mixeur coupé — sortie nulle par la règle ci-dessus — et
+            // écoulée mixeur coupé - sortie nulle par la règle ci-dessus - et
             // l'autre mixeur rétabli, sur un niveau continu que la charge
             // gardée pendant la coupure rejoint exactement. Les deux moitiés
             // valent donc zéro séparément.
@@ -702,7 +702,7 @@ private:
             // les deux dans une proportion qui ne tient qu'à l'instant où le
             // jeu a écrit son registre. Filtrée contre la charge, elle sortait
             // une impulsion d'un seul échantillon, jusqu'à un sixième de la
-            // dynamique — le tic entendu à l'ouverture d'une partie, quand le
+            // dynamique - le tic entendu à l'ouverture d'une partie, quand le
             // jeu éteint puis rallume l'APU avant de jouer sa première note.
             //
             // On rend donc le zéro que valent les deux moitiés, et on reprend

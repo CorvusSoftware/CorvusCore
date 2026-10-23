@@ -8,8 +8,8 @@
 # cycle `gb_corvus_core -> gbc_corvus_core -> gb_corvus_core`.
 #
 # La cible est INTERFACE tant que les composants extraits ne sont que des
-# en-têtes. Quand l'un d'eux gagnera un `.cpp` — le PPU, les DMA et le port
-# série sont les prochains sur la liste d'extraction — il suffira de la passer
+# en-têtes. Quand l'un d'eux gagnera un `.cpp` - le PPU, les DMA et le port
+# série sont les prochains sur la liste d'extraction - il suffira de la passer
 # en STATIC avec ses sources : aucune autre ligne ne bouge et, surtout, aucun
 # cycle n'apparaît. C'est précisément ce que l'inclusion par chemin relatif
 # depuis `cores/gb` rendait impossible.

@@ -43,7 +43,7 @@ série restent immédiates. Pour une réussite mémoire, l'orchestrateur impose 
 plus `--memory-require-mismatch` : l'ensemble des attentes doit d'abord avoir
 été observé dans un état différent, puis rester conforme pendant le nombre de
 points d'observation déclaré par `memory_stability_samples` (au moins deux).
-Un point est pris après chaque `Machine::step` — normalement une instruction,
+Un point est pris après chaque `Machine::step` - normalement une instruction,
 ou un M-cycle lorsque le CPU est arrêté. Une valeur initiale inchangée ne peut
 donc pas produire un faux positif.
 

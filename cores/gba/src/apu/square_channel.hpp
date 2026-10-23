@@ -62,7 +62,7 @@ public:
      *
      * Le cumul est rendu **tel quel**, sans division : c'est le mélangeur qui
      * divise, une seule fois, à la toute fin. Diviser ici demanderait un
-     * flottant — la moyenne n'est presque jamais entière — et ferait dépendre
+     * flottant - la moyenne n'est presque jamais entière - et ferait dépendre
      * la sortie de l'ordre des arrondis. Tout le mixage reste ainsi en entiers
      * exacts, ce qui vaut aussi pour le modèle de référence Kotlin auquel ce
      * cœur est confronté trame par trame.

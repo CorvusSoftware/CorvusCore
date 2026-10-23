@@ -16,7 +16,7 @@
  * Les quatre canaux changent d'état bien plus vite que le débit de sortie : un
  * canal carré à sa fréquence la plus haute bascule tous les quatre cycles,
  * quand un échantillon en dure cent vingt-huit. Prélever la valeur qui se
- * trouve là à l'instant du prélèvement — ce que ce mélangeur faisait — replie
+ * trouve là à l'instant du prélèvement - ce que ce mélangeur faisait - replie
  * toutes les harmoniques au-dessus de la moitié du débit dans l'audible, où
  * elles s'entendent comme des sifflements sans rapport avec le morceau.
  *
@@ -71,7 +71,7 @@ constexpr int cpu_cycles_per_audio_cycle = 4;
  * Un canal carré à sa fréquence la plus haute rend une valeur stable.
  *
  * À la période minimale, le canal bascule trente-deux fois par échantillon.
- * Sa moyenne est donc la même d'un échantillon à l'autre — c'est un signal
+ * Sa moyenne est donc la même d'un échantillon à l'autre - c'est un signal
  * continu, pas un son. Prélevé à l'instant, il alternerait au contraire entre
  * ses deux extrêmes et produirait un ton de seize kilohertz que le matériel
  * n'émet pas.
@@ -88,7 +88,7 @@ void un_carre_tres_rapide_ne_produit_pas_de_ton() {
     check(allume > 0, "le niveau de référence est atteint");
 
     auto apu = powered_mixer();
-    // Rapport cyclique de moitié — le champ vaut deux —, volume quinze,
+    // Rapport cyclique de moitié - le champ vaut deux -, volume quinze,
     // fréquence maximale.
     apu.write_register(0x62, 0x80 | (0xf << 12) | (1 << 11));
     apu.write_register(0x64, 2047 | 0x8000);
@@ -107,8 +107,8 @@ void un_carre_tres_rapide_ne_produit_pas_de_ton() {
         "la sortie est stable d'un échantillon à l'autre"
     );
     // Et elle est stable **à la bonne hauteur**. Sans cette borne, un canal
-    // resté bloqué sur un seul palier — ce que faisait l'avance par bonds de
-    // huit pas d'un coup — passerait pour un signal parfaitement lisse, muet
+    // resté bloqué sur un seul palier - ce que faisait l'avance par bonds de
+    // huit pas d'un coup - passerait pour un signal parfaitement lisse, muet
     // ou saturé selon la phase où il s'est figé.
     // Une moitié de cycle de service donne la moitié du niveau allumé. La
     // fourchette laisse la marche de quantification, pas davantage.
@@ -186,7 +186,7 @@ void le_bruit_rapide_se_resserre_autour_de_sa_moyenne() {
  *
  * Les cumuls appartiennent à la fenêtre qui s'achève. Les garder en réserve
  * ferait sortir, au rallumage, un échantillon composé de deux moitiés
- * étrangères l'une à l'autre — un claquement, exactement là où un jeu coupe
+ * étrangères l'une à l'autre - un claquement, exactement là où un jeu coupe
  * puis rallume son mélangeur.
  */
 void l_extinction_ne_garde_pas_la_fenetre_precedente() {

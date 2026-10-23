@@ -24,8 +24,8 @@
  * bit 12 de l'attribut 0 pour un objet, et les quatre quartets de `MOSAIC` qui
  * donnent séparément les tailles horizontale et verticale des plans et des
  * objets. Les vérifications ci-dessous éprouvent chacune de ces trois portes,
- * et croisent volontairement les quartets — mosaïque de plan neutre pendant que
- * celle des objets agit, et l'inverse — pour qu'une inversion des champs ne
+ * et croisent volontairement les quartets - mosaïque de plan neutre pendant que
+ * celle des objets agit, et l'inverse - pour qu'une inversion des champs ne
  * puisse pas passer.
  *
  * Le motif de référence est une tuile dont chaque point porte un index de

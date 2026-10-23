@@ -232,7 +232,7 @@ void time_only_read_test() {
 /**
  * Toutes les bibliothèques n'émettent pas l'octet de commande dans le même
  * sens. Quand le motif fixe `0110b` n'apparaît pas en tête, le composant relit
- * l'octet à l'envers avant de le rejeter — c'est ce repli qui rend lisibles les
+ * l'octet à l'envers avant de le rejeter - c'est ce repli qui rend lisibles les
  * jeux dont la routine est bâtie en sens inverse.
  */
 void reversed_command_test() {
@@ -284,7 +284,7 @@ void date_time_write_test() {
 
     // Le siècle ne se lit pas dans l'année BCD : 1926 et 2026 y sont
     // indiscernables. C'est le jour de la semaine, recalculé par le composant,
-    // qui distingue les deux — le 14 mars 2026 est un samedi, le même jour de
+    // qui distingue les deux - le 14 mars 2026 est un samedi, le même jour de
     // 1926 un dimanche. Sans cette vérification, une base d'année erronée à
     // l'écriture passerait inaperçue.
     std::tm target{};

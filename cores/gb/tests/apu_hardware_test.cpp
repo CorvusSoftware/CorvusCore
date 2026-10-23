@@ -59,7 +59,7 @@ private:
  * quart de la dynamique : un bruit avant la musique du titre, à chaque partie.
  *
  * La vérification exige aussi que le canal reste **signalé allumé**, faute de
- * quoi elle serait satisfaite en éteignant simplement l'APU — ce que le
+ * quoi elle serait satisfaite en éteignant simplement l'APU - ce que le
  * matériel ne fait pas, et ce qui casserait la lecture de NR52.
  */
 void hle_post_boot_silence_test() {
@@ -102,7 +102,7 @@ void post_boot_channel_still_audible_test() {
  * L'initialisation audio type d'un jeu ne fait aucun bruit.
  *
  * Un jeu commence presque toujours par couper l'APU, le rallumer, poser ses
- * volumes et son aiguillage, puis allumer le convertisseur d'un canal — le
+ * volumes et son aiguillage, puis allumer le convertisseur d'un canal - le
  * tout avant de jouer la moindre note.
  *
  * Rien de cette séquence ne doit s'entendre. Le niveau continu est le même

@@ -2,7 +2,7 @@
 # Copyright (C) 2026 CorvusSoftware
 # SPDX-License-Identifier: AGPL-3.0-only
 
-display_name = "Nintendo - Game Boy Advance (CorvusGBA, experimental)"
+display_name = "Nintendo - Game Boy Advance (CorvusGBA)"
 corename = "CorvusGBA"
 authors = "CorvusSoftware (GhostPunishR)"
 supported_extensions = "gba"

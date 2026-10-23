@@ -1,0 +1,227 @@
+#pragma once
+
+#include "memory/bus.hpp"
+
+#include <algorithm>
+#include <array>
+#include <cstdint>
+#include <limits>
+#include <optional>
+#include <span>
+#include <utility>
+
+namespace corvuscore::gba {
+
+class SerialLink;
+
+/**
+ * Port série (GBATEK, « GBA Communication Ports ») : modes normal (8 ou
+ * 32 bits) et multijoueur, seul ou relié à d'autres consoles par un LinkHub.
+ *
+ * Sans câble, le matériel termine pourtant seul les transferts qu'il cadence :
+ * - mode normal, horloge interne : 8 ou 32 bits à 256 kHz ou 2 MHz ; la ligne
+ *   SI reste haute, si bien que les données reçues valent toutes 1 ;
+ * - mode multijoueur : la console reçoit 0xFFFF de chaque enfant absent et
+ *   garde sa propre donnée dans SIOMULTI0.
+ * Avec une horloge externe (mode normal esclave), le transfert attend qu'un
+ * partenaire le cadence, comme sur la console. Le mode UART n'est pas émulé.
+ *
+ * Relié, le parent (joueur 0) lance les transferts multijoueurs ; en mode
+ * normal, la console à horloge interne cadence celle qui attend avec une
+ * horloge externe. Chaque console lit les données des autres à l'instant du
+ * départ et reçoit le résultat à l'instant de la fin, sur sa propre horloge.
+ */
+class Serial {
+public:
+    static constexpr int idle = std::numeric_limits<int>::max();
+    enum class Mode { normal8, normal32, multiplayer, other };
+    // Durée d'un transfert multijoueur en cycles, selon le débit (9600, 38400,
+    // 57600 ou 115200 bauds) et le nombre de consoles reliées (1 à 4) :
+    // mesures sur console publiées par mGBA.
+    static constexpr std::array<std::array<int, 4>, 4> multiplayer_cycles{{
+        {31976, 63427, 94884, 125829},
+        {8378, 16241, 24104, 31457},
+        {5750, 10998, 16241, 20972},
+        {3140, 5755, 8376, 10486},
+    }};
+    static constexpr int longest_transfer = 125829;
+    // Données reçues à la fin d'un transfert relié : SIOMULTI0..3 en mode
+    // multijoueur ; en mode normal, le mot reçu (demi-mot bas puis haut).
+    using Received = std::array<std::uint16_t, 4>;
+
+    Serial(Bus& bus, InterruptController& interrupts) : bus_(bus), interrupts_(interrupts) {}
+    Serial(const Serial&) = delete;
+    Serial& operator=(const Serial&) = delete;
+
+    // Écriture de SIOCNT, déjà rangée dans les registres d'E/S.
+    void control_write(int value);
+    // Écriture de RCNT : le mode du port peut changer.
+    void rcnt_write();
+    [[nodiscard]] int cycles_until_completion() const noexcept { return std::min(remaining_, join_in_); }
+    void tick(int cycles) {
+        clock_ += cycles;
+        // Une fin précède toujours le départ suivant sur la même horloge.
+        if (remaining_ != idle && (remaining_ -= cycles) <= 0) complete();
+        if (join_in_ != idle && (join_in_ -= cycles) <= 0) join_now(-join_in_);
+    }
+
+    // Cycles écoulés depuis la création : l'horloge du câble en découle.
+    [[nodiscard]] std::int64_t clock() const noexcept { return clock_; }
+    [[nodiscard]] Mode mode() const noexcept;
+    [[nodiscard]] int player() const noexcept { return player_; }
+    [[nodiscard]] bool linked() const noexcept;
+    void attach(SerialLink* link, int player) noexcept {
+        hub_ = link;
+        player_ = link ? player : 0;
+    }
+    [[nodiscard]] SerialLink* link() const noexcept { return hub_; }
+    /** Un transfert a été demandé depuis le dernier appel. Hors état instantané. */
+    [[nodiscard]] bool take_activity() noexcept { return std::exchange(activity_, false); }
+    // Recalcule les bits d'état de SIOCNT (SI, SD, numéro de joueur).
+    void refresh_status() noexcept;
+    // Lecture par le CPU de SIODATA32/SIOMULTI0-3, SIOCNT, SIODATA8 et RCNT,
+    // selon le mode du port.
+    [[nodiscard]] int read_register(int offset) const noexcept;
+
+    // Côté câble : ce que la console envoie, son niveau au repos, et son
+    // entrée dans un transfert lancé par une autre.
+    [[nodiscard]] std::uint32_t outgoing(Mode mode) const noexcept;
+    [[nodiscard]] std::uint32_t idle_level(Mode mode) const noexcept;
+    [[nodiscard]] bool ready_for(Mode mode) const noexcept;
+    [[nodiscard]] bool so_low() const noexcept;
+    [[nodiscard]] bool transferring() const noexcept { return remaining_ != idle; }
+    // Numéro, sur le câble, du transfert en cours et de celui dont le départ
+    // est attendu (0 : aucun). Un résultat ne va qu'au transfert qui l'attend.
+    [[nodiscard]] std::uint32_t transfer_id() const noexcept { return transfer_id_; }
+    [[nodiscard]] std::uint32_t join_id() const noexcept { return join_id_; }
+    void join(std::int64_t start_in, int duration, std::uint32_t id);
+    void leave(std::uint32_t id) noexcept;
+    void mark_busy() noexcept;
+    void receive(std::uint32_t id, const Received& value) noexcept;
+
+    // État instantané du câble. Ordre : départ attendu, sa durée, son numéro,
+    // numéro du transfert en cours, puis son résultat (présent, quatre
+    // demi-mots) et celui du transfert attendu (présent, quatre demi-mots).
+    static constexpr std::size_t link_state_words = 14;
+    [[nodiscard]] std::array<std::int32_t, link_state_words> export_link_state() const noexcept;
+    void import_link_state(std::span<const std::int32_t> state);
+    // SIOMULTI0-3 : données reçues par le dernier transfert multijoueur.
+    [[nodiscard]] const Received& multiplayer_data() const noexcept { return multiplayer_data_; }
+    void import_multiplayer_data(std::span<const std::int32_t> values);
+    void clear_multiplayer_data() noexcept { multiplayer_data_ = {}; }
+    [[nodiscard]] int export_remaining() const noexcept { return remaining_; }
+    void import_remaining(int remaining) {
+        if (remaining != idle && (remaining <= 0 || remaining > longest_transfer))
+            throw SaveStateError("État série GBA invalide");
+        remaining_ = remaining;
+    }
+
+private:
+    void start_multiplayer();
+    void start_normal();
+    void join_now(int late);
+    void begin_joined(std::int64_t remaining, std::uint32_t id);
+    void complete();
+    [[nodiscard]] int io_half(int offset) const noexcept {
+        return bus_.io[static_cast<std::size_t>(offset)] | bus_.io[static_cast<std::size_t>(offset + 1)] << 8;
+    }
+    void write_io_half(int offset, int value) noexcept {
+        bus_.io[static_cast<std::size_t>(offset)] = static_cast<std::uint8_t>(value);
+        bus_.io[static_cast<std::size_t>(offset + 1)] = static_cast<std::uint8_t>(value >> 8);
+    }
+
+    static constexpr int serial_interrupt = 7;
+    Bus& bus_;
+    InterruptController& interrupts_;
+    SerialLink* hub_{};
+    bool activity_{};
+    int player_{};
+    std::int64_t clock_{};
+    int remaining_{idle};             // cycles avant la fin du transfert en cours
+    std::uint32_t transfer_id_{};     // transfert en cours sur le câble (0 : seul)
+    std::optional<Received> received_;
+    int join_in_{idle};               // cycles avant le départ d'un transfert lancé ailleurs
+    int join_duration_{};             // durée de ce transfert
+    std::uint32_t join_id_{};         // son numéro
+    std::optional<Received> next_received_;  // son résultat, connu avant son départ
+    Received multiplayer_data_{};            // SIOMULTI0-3, distincts de SIODATA32
+    bool busy_{};                     // bit Start/Busy de SIOCNT
+};
+
+inline void serial_control_write(Serial* serial, int value) {
+    if (serial) serial->control_write(value);
+}
+inline void serial_rcnt_write(Serial* serial) {
+    if (serial) serial->rcnt_write();
+}
+
+/**
+ * Ce qui relie un port série à ceux d'autres consoles : le câble local
+ * (LinkHub) ou un câble vers un autre appareil (RemoteSerialLink).
+ */
+class SerialLink {
+public:
+    virtual ~SerialLink() = default;
+    [[nodiscard]] virtual int players() const noexcept = 0;
+    // Ligne SD en multijoueur : toutes les consoles reliées sont en mode multijoueur.
+    [[nodiscard]] virtual bool all_multiplayer() const noexcept = 0;
+    // Ligne SI en mode normal : le partenaire de `self` tire sa ligne SO.
+    [[nodiscard]] virtual bool partner_so_low(const Serial& self) const noexcept = 0;
+    // Rend le numéro du transfert, ou 0 si le câble est déjà pris : la
+    // console transfère alors seule.
+    [[nodiscard]] virtual std::uint32_t start(Serial& master, Serial::Mode mode, int duration) = 0;
+    virtual void capture(Serial& participant) = 0;
+    // Fin du transfert, à l'instant où `caller` l'atteint le premier.
+    virtual void finish(const Serial& caller) = 0;
+    // Recalcule les bits d'état des consoles reliées.
+    virtual void refresh() noexcept = 0;
+};
+
+/**
+ * Câble link entre 2 à 4 consoles d'un même processus : les machines
+ * avancent par tranches, à tour de rôle, et le câble traduit l'instant d'un
+ * transfert d'une horloge à l'autre. Le joueur 0 est le parent.
+ */
+class LinkHub final : public SerialLink {
+public:
+    static constexpr int max_players = 4;
+    // `origin` : valeur de l'horloge série du joueur à l'instant 0 du câble.
+    void attach(int player, Serial& serial, std::int64_t origin) noexcept;
+    void detach_all() noexcept;
+    [[nodiscard]] int players() const noexcept override;
+    [[nodiscard]] bool all_multiplayer() const noexcept override;
+    [[nodiscard]] bool partner_so_low(const Serial& self) const noexcept override;
+    [[nodiscard]] Serial* serial(int player) const noexcept {
+        return player >= 0 && player < max_players ? slots_[static_cast<std::size_t>(player)].serial : nullptr;
+    }
+    // Joueur qui a lancé le dernier transfert : il avance en premier, si
+    // bien que les autres apprennent le départ avant de l'atteindre.
+    [[nodiscard]] int first() const noexcept { return first_; }
+    void refresh() noexcept override;
+
+    [[nodiscard]] std::uint32_t start(Serial& master, Serial::Mode mode, int duration) override;
+    void capture(Serial& participant) override;
+    void finish(const Serial& caller) override;
+
+private:
+    [[nodiscard]] std::int64_t now(const Serial& serial) const noexcept;
+    struct Slot {
+        Serial* serial{};
+        std::int64_t origin{};
+    };
+    struct Transfer {
+        bool active{};
+        std::uint32_t id{};
+        Serial::Mode mode{};
+        int master{};
+        std::array<std::uint32_t, max_players> sent{};
+        std::array<bool, max_players> participates{};
+        std::array<bool, max_players> captured{};
+    };
+    std::array<Slot, max_players> slots_{};
+    Transfer transfer_{};
+    std::uint32_t last_id_{};
+    int first_{};
+};
+
+} // namespace corvuscore::gba

@@ -3,9 +3,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 name: Release
-# Publishes the GitHub release of a vX.Y.Z tag. The notes are that version's
-# section of CHANGELOG.md; the Linux x86-64 Libretro cores are attached.
-# Third-party actions are pinned to a full commit SHA (tag in the comment).
+# Publish native Libretro cores and RetroArch .info files on every supported
+# host. Third-party actions are pinned to their full commit SHA.
 on:
   push:
     tags: ['v*.*.*']
@@ -16,16 +15,35 @@ on:
         required: true
 
 jobs:
-  release:
-    name: Publish GitHub release
-    runs-on: ubuntu-latest
+  build:
+    name: Build and test (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
     permissions:
-      contents: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            os: ubuntu-latest
+          - platform: windows-x86_64
+            os: windows-latest
+          - platform: macos
+            os: macos-latest
+          - platform: android-arm64-v8a
+            os: ubuntu-latest
+            abi: arm64-v8a
+          - platform: android-armeabi-v7a
+            os: ubuntu-latest
+            abi: armeabi-v7a
+    defaults:
+      run:
+        shell: bash
     env:
       TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - name: Check the version and extract the release notes
+      - name: Check version
         run: |
           if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Tag $TAG is not vX.Y.Z"; exit 1
@@ -34,7 +52,74 @@ jobs:
           if ! grep -Fq "project(CorvusCore VERSION $version " CMakeLists.txt; then
             echo "CMakeLists.txt does not declare version $version"; exit 1
           fi
-          # Lines between "## X.Y.Z - date" and the next second-level heading.
+      - name: Locate Android NDK
+        if: ${{ startsWith(matrix.platform, 'android-') }}
+        run: |
+          ndk="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_ROOT:-}}"
+          test -n "$ndk" || { echo "No Android NDK on this runner"; exit 1; }
+          echo "NDK=$ndk" >> "$GITHUB_ENV"
+      - name: Configure CMake
+        run: |
+          if [[ "${{ matrix.platform }}" == android-* ]]; then
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+              "-DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake" \
+              "-DANDROID_ABI=${{ matrix.abi }}" -DANDROID_PLATFORM=android-24
+          elif [[ "$RUNNER_OS" == "Windows" ]]; then
+            cmake -S . -B build -DBUILD_TESTING=ON
+          else
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          fi
+      - name: Build
+        run: cmake --build build --config Release --parallel 2
+      - name: Test (desktop)
+        if: ${{ !startsWith(matrix.platform, 'android-') }}
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Package Libretro cores and RetroArch information
+        run: |
+          mkdir -p dist/cores dist/info
+          case "$RUNNER_OS" in
+            Windows) core_dir="build/libretro/Release"; ext=dll ;;
+            macOS) core_dir="build/libretro"; ext=dylib ;;
+            *) core_dir="build/libretro"; ext=so ;;
+          esac
+          for system in gb gbc gba; do
+            core="$core_dir/corvuscore_${system}_libretro.$ext"
+            info="build/libretro/info/corvuscore_${system}_libretro.info"
+            test -s "$core" && test -s "$info"
+            cp "$core" dist/cores/
+            cp "$info" dist/info/
+          done
+          platform="${{ matrix.platform }}"
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            case "$RUNNER_ARCH" in
+              X64) platform="macos-x86_64" ;;
+              ARM64) platform="macos-arm64" ;;
+              *) echo "Unsupported macOS architecture: $RUNNER_ARCH"; exit 1 ;;
+            esac
+          fi
+          archive="corvuscore-libretro-$TAG-$platform.zip"
+          (cd dist && cmake -E tar cf "../$archive" --format=zip cores info)
+          echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-${{ matrix.platform }}
+          path: ${{ env.ARCHIVE }}
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    env:
+      TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Extract release notes
+        run: |
+          version="${TAG#v}"
           awk -v heading="## $version " '
             /^## / { if (found) exit; found = index($0, heading) == 1; next }
             found
@@ -42,21 +127,23 @@ jobs:
           if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
             echo "CHANGELOG.md has no section for $version"; exit 1
           fi
-      - name: Build and test
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+      - name: Verify release packages
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-          cmake --build build --parallel 2
-          ctest --test-dir build --output-on-failure
-      - name: Package Libretro cores and RetroArch information
-        run: |
-          mkdir -p dist/cores dist/info
-          cp build/libretro/*_libretro.so dist/cores/
-          cp build/libretro/info/*_libretro.info dist/info/
-          tar -C dist -czf "corvuscore-libretro-$TAG-linux-x86_64.tar.gz" cores info
+          files=(release-assets/corvuscore-libretro-"$TAG"-*.zip)
+          if [[ "${#files[@]}" -ne 5 ]]; then
+            echo "Expected five platform packages, got ${#files[@]}"; exit 1
+          fi
+          for file in "${files[@]}"; do test -s "$file" || exit 1; done
+          ls -lh "${files[@]}"
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
-          gh release create "$TAG" "corvuscore-libretro-$TAG-linux-x86_64.tar.gz"
+          gh release create "$TAG" release-assets/*.zip
           --title "CorvusCore ${TAG#v}" --notes-file "$RUNNER_TEMP/notes.md"
           --target "$GITHUB_SHA"

@@ -120,6 +120,19 @@ jobs:
             -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/corvuscore"
           cmake --build build/package_consumer --config Release
           build/package_consumer/Release/corvuscore_package_consumer.exe
+      - name: Package Windows Libretro cores and RetroArch information
+        run: |
+          mkdir -p dist/cores dist/info
+          for system in gb gbc gba; do
+            test -f "build/libretro/Release/corvuscore_${system}_libretro.dll"
+            cp "build/libretro/Release/corvuscore_${system}_libretro.dll" dist/cores/
+            cp "build/libretro/info/corvuscore_${system}_libretro.info" dist/info/
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: corvuscore-libretro-windows-x86_64
+          path: dist/
+          if-no-files-found: error
 
   macos:
     name: C++20 engines and Libretro on macOS (Apple Clang)
@@ -141,6 +154,18 @@ jobs:
             -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/corvuscore"
           cmake --build build/package_consumer
           build/package_consumer/corvuscore_package_consumer
+      - name: Package macOS Libretro cores and RetroArch information
+        run: |
+          mkdir -p dist/cores dist/info
+          for system in gb gbc gba; do
+            cp "build/libretro/corvuscore_${system}_libretro.dylib" dist/cores/
+            cp "build/libretro/info/corvuscore_${system}_libretro.info" dist/info/
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: corvuscore-libretro-macos-${{ runner.arch }}
+          path: dist/
+          if-no-files-found: error
 
   android:
     # Cross-compilation only: nothing runs, but every source and test is
@@ -178,3 +203,15 @@ jobs:
               echo "$core exports non-Libretro symbols:"; echo "$extra"; exit 1
             fi
           done
+      - name: Package Android Libretro cores and RetroArch information
+        run: |
+          mkdir -p dist/cores dist/info
+          for system in gb gbc gba; do
+            cp "build/libretro/corvuscore_${system}_libretro.so" dist/cores/
+            cp "build/libretro/info/corvuscore_${system}_libretro.info" dist/info/
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: corvuscore-libretro-android-${{ matrix.abi }}
+          path: dist/
+          if-no-files-found: error

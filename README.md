@@ -9,7 +9,7 @@
 
 Moteurs d'émulation **Game Boy, Game Boy Color et Game Boy Advance** écrits en **C++20**, sans cœur tiers.
 
-Ce sont les cœurs maison de [RavenEmu](https://github.com/GhostPunishR/RavenEmu). Ce dépôt permet de les utiliser hors de l'application Android : dans **RetroArch** (Libretro), ou dans votre propre projet via une **API C** ou **C++**.
+Ce dépôt permet de les utiliser hors de l'application Android : dans **RetroArch** (Libretro), ou dans votre propre projet via une **API C** ou **C++**.
 
 | Cœur | Console | État |
 | --- | --- | --- |
@@ -115,8 +115,6 @@ ctest --test-dir build --output-on-failure
 ## Versions
 
 Version actuelle : **0.9.0**. Chaque version est publiée sur la page des [releases](https://github.com/CorvusSoftware/CorvusCore/releases) avec les cœurs Libretro Linux. Ses évolutions sont détaillées dans le [journal des modifications](CHANGELOG.md).
-
-Avant la 1.0, une version peut changer l'API ou le format des états ; le journal le signale à chaque fois.
 
 ## Contribuer
 

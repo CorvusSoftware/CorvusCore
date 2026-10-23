@@ -108,7 +108,7 @@ constexpr unsigned width = 160, height = 144;
 constexpr double fps = 4'194'304.0 / 70'224.0;
 std::unique_ptr<corvuscore::Core> new_core() { return corvuscore::gbc::make_core(); }
 #else
-constexpr const char* label = "CorvusGBA (experimental)";
+constexpr const char* label = "CorvusGBA";
 constexpr const char* extensions = "gba";
 constexpr unsigned width = 240, height = 160;
 constexpr double fps = 16'777'216.0 / 280'896.0;

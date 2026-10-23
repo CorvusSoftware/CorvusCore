@@ -9,6 +9,117 @@ Ce fichier recense les évolutions notables de CorvusCore (anciennement RavenCor
 - Renommage du projet en **CorvusCore** sous **CorvusSoftware**, avec namespaces, API C, cibles CMake, variables de build, sorties Libretro, chemins d'en-tête et documentation cohérents.
 - **Rupture de compatibilité des noms d'API :** les intégrations externes utilisant `ravenemu` doivent migrer vers `corvuscore`. Historique antérieur préservé ci-dessous.
 
+## 0.13.0 - 2026-10-23
+
+Portage des nouveautés de [RavenCore](https://github.com/GhostPunishR/RavenCore) jusqu'au commit [`70f251a`](https://github.com/GhostPunishR/RavenCore/commit/70f251ae75456a3f340679280e8ae1be60f3c701), adapté aux noms et à l'identité **CorvusCore**.
+
+Cette version comble une partie des écarts relevés face aux émulateurs de référence (mGBA, SameBoy, Gambatte, VBA-M, gpSP). Elle prend en charge le MBC30 et le mode Game Boy Advance des jeux GBC. Les cœurs Libretro gagnent le mélange d'images, le blocage des directions opposées et les boot ROMs du dossier système. L'API C et le format des états ne changent pas ; l'API C++ gagne un modèle de console.
+
+### Ajouté
+
+- **MBC30** (Pan Docs), la variante du MBC3 de *Pocket Monsters Crystal Version* au Japon : 8 bits de banque de ROM (4 Mio) et 8 banques de RAM (64 Kio). Elle est reconnue à 64 Kio de RAM ou à plus de 2 Mio de ROM.
+- **Mode Game Boy Advance des jeux GBC.**
+  - `gb::HardwareModel::agb` émule la GBC d'une Game Boy Advance. Elle démarre avec B = 1, ou B + 1 pour un jeu Game Boy, avec les drapeaux de ce `INC B` (Pan Docs, « Power Up Sequence »).
+  - Le diviseur prend un cycle machine d'avance : celui de cette instruction en plus.
+  - Les jeux qui testent ce registre débloquent leurs bonus GBA, comme Zelda Oracle ou Shantae.
+  - Dans CorvusGBC, l'option **Console émulée** le choisit, au chargement du jeu.
+- **Mélange d'images** dans les trois cœurs Libretro. Il atténue le scintillement des jeux qui affichent un objet une image sur deux.
+  - **Mélange** : la moyenne des deux dernières images.
+  - **Rémanence** : 3/8 de l'image affichée restent, comme sur un écran LCD lent.
+  - Le mélange s'applique après la palette et la correction des couleurs, et change pendant le jeu.
+- **Directions opposées.** Haut et bas, ou gauche et droite, tenus ensemble sont bloqués par défaut, comme sur la croix de la console : certains jeux plantent sinon. L'option **Directions opposées** les autorise.
+- **Boot ROMs du dossier système** pour CorvusGB et CorvusGBC.
+  - Fichiers reconnus : `dmg_boot.bin` ou `gb_bios.bin`, `cgb_boot.bin` ou `gbc_bios.bin`, `agb_boot.bin` pour le mode Game Boy Advance.
+  - Un fichier d'une autre taille est ignoré, et le journal le dit.
+  - L'option **Boot ROM** les écarte. Les fichiers `.info` les déclarent comme firmwares facultatifs.
+- Les options Libretro se rangent en quatre catégories : **Image**, **Commandes**, **Système** et **Cartouche**.
+
+### Modifié
+
+- **États et boot ROM.** Un état pris après la boot ROM se recharge désormais avec ou sans elle : seul un état pris pendant qu'elle s'exécute exige la même. Avant, ajouter ou retirer une boot ROM rendait inutilisables tous les états d'un jeu Game Boy. C'est utile maintenant que CorvusGB et CorvusGBC prennent celle du dossier système, où beaucoup de joueurs en ont déjà une pour d'autres cœurs.
+
+### Compatibilité des états instantanés
+
+- **GBA : format 16** et **GB/GBC : format 11**, inchangés. Un état MBC30 accepte désormais une banque de ROM au-delà de 0x7F.
+- **API C : version 0**, inchangée. Le paquet CMake se demande désormais avec `find_package(CorvusCore 0.13)`.
+- **API C++** : `gb::HardwareModel` gagne `agb`. Un `switch` exhaustif sur ce type doit traiter la nouvelle valeur.
+
+### Tests
+
+- Tests publics GB/GBC : 200 au lieu de 198. Les tests Mooneye `misc/boot_regs-A` et `misc/boot_div-A` passent en mode `agb`. Ils échouent en mode `cgb`, comme `boot_regs-cgb` et `boot_div-cgbABCDE` échouent en mode `agb`. `gb_conformance_runner` et le manifeste acceptent `--hardware agb`.
+- `gb_cartridge_mbc` : banques de ROM et de RAM du MBC30, face à un MBC3 ordinaire, et banque de ROM au-delà de 0x7F gardée dans un état.
+- `gb_corvus_core` :
+  - registres de démarrage d'une GBC et d'une GBA, pour un jeu GBC et pour un jeu Game Boy ;
+  - avec une boot ROM maison : un état pris après elle se recharge sans elle ou avec une autre ; un état pris pendant qu'elle s'exécute est refusé dans ces deux cas.
+- `libretro_smoke_gb`, `_gbc` et `_gba`, avec un jeu maison qui change de fond à chaque image et range la croix en mémoire :
+  - gauche et droite bloquées, puis autorisées ;
+  - le mélange et la rémanence, comparés au calcul attendu ;
+  - sur CorvusGBC, B vaut 1 en mode Game Boy Advance ;
+  - une boot ROM du dossier système exécutée, puis écartée par l'option ;
+  - les nouvelles options v2 et leurs catégories.
+
+## 0.12.0 - 2026-10-23
+
+Cette version complète les cœurs Libretro. Ils sont désormais publiés pour Windows, macOS et Android, prennent les codes de triche, gagnent des options d'image et signalent un jeu refusé. Le cœur ne dessine plus les images que RetroArch n'affiche pas. L'API C et le format des états ne changent pas ; l'API C++ gagne les codes de triche.
+
+### Ajouté
+
+- **Cœurs Libretro pour toutes les plateformes.** Chaque version publie, en plus de Linux x86-64 :
+  - Windows x86-64, avec le runtime C++ intégré : pas de redistribuable Visual C++ à installer ;
+  - macOS 11 ou plus récent, en une bibliothèque universelle pour Apple Silicon et Intel ;
+  - Android arm64-v8a et armeabi-v7a, nommés `*_libretro_android.so` comme l'attend RetroArch pour Android.
+  - La CI fournit les mêmes archives à chaque PR. `libretro/package.sh` les assemble : `cores/` et `info/`.
+- **Options d'image.**
+  - Palette des jeux Game Boy : vert (Game Boy) ou gris (Game Boy Pocket).
+  - Correction des couleurs LCD pour la Game Boy Color et la Game Boy Advance, la même que RavenEmu Android : environ 28 % de désaturation, puis un gamma de 1,15.
+  - Elles changent pendant le jeu.
+- **Options v2.** Libellés et descriptions en français, catégories **Image** et **Cartouche**. Un frontend plus ancien garde la liste simple.
+- **Codes de triche**, dans le menu de RetroArch et par l'API C++.
+  - **Game Boy et Game Boy Color.**
+    - Game Genie : l'octet est remplacé à la lecture de la ROM, comme le fait l'adaptateur ; sa comparaison écarte les autres banques.
+    - GameShark : l'octet est récrit à chaque image, dans la banque de RAM de cartouche choisie par le code, ou de WRAM de la GBC pour 91 à 97.
+  - **GBA.** Codebreaker non chiffré, GameShark v1/v2 et Pro Action Replay v3 chiffrés ; ces deux derniers sont reconnus à leur déchiffrement.
+    - Pris en charge : écritures, additions, opérations logiques, séries, écritures par pointeur, conditions (dont les blocs IF/ELSE/ENDIF de l'Action Replay) et test des touches du Codebreaker.
+    - Les codes s'exécutent une fois par image, hors du temps de la console : ils ne décalent pas son minutage d'un cycle.
+  - **Non pris en charge**, avec un message qui le dit : patchs de ROM GBA, changement de chiffrement `DEADFACE`, Codebreaker chiffré (type 9). Les codes des boutons des appareils n'ont pas d'effet, faute de bouton.
+  - Un code refusé affiche sa raison à l'écran et dans le journal, par exemple « CorvusGB : code de triche 1 refusé (le code GameShark « 01021234 » vise la ROM : c'est le rôle d'un code Game Genie) ».
+  - **API C++.** `parse_cheat` décode une entrée et lève `CheatError` avec la raison d'un refus ; `Core::set_cheats` active la liste. Les codes survivent aux changements de ROM, aux réinitialisations et aux états, sans y être enregistrés.
+- **Messages.** Un jeu refusé affiche sa raison à l'écran et dans le journal de RetroArch, par exemple « CorvusGBA : jeu refusé (ROM GBA trop courte) ». Une erreur pendant le jeu, une fois par partie, et un état refusé vont au journal.
+
+### Modifié
+
+- **Images et son que RetroArch n'utilise pas** (anticipation « run-ahead », avance rapide), signalés par `RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE` :
+  - le cœur GBA ne dessine pas l'image ;
+  - aucun cœur ne la convertit, et RetroArch reprend l'image précédente ;
+  - le son de ces images est jeté.
+  - Sans reprise de l'image possible (`RETRO_ENVIRONMENT_GET_CAN_DUPE`), l'image est dessinée comme avant.
+- Les options GBA existantes gardent leurs clés et leurs valeurs ; seuls leurs libellés passent en français.
+
+### Compatibilité des états instantanés
+
+- **GBA : format 16** et **GB/GBC : format 11**, inchangés.
+- **API C : version 0**, inchangée. Le paquet CMake se demande désormais avec `find_package(CorvusCore 0.12)`.
+- **API C++** : `Core::set_cheats` est une méthode virtuelle nouvelle, avec une implémentation par défaut.
+
+### Tests
+
+- `libretro_smoke_gb`, `_gbc` et `_gba` vérifient désormais :
+  - une image et un son non voulus : l'image précédente est reprise, aucun son ne part ;
+  - un jeu refusé : sa raison est au journal et à l'écran ;
+  - la palette Pocket appliquée en cours de jeu ;
+  - la correction LCD sur un fond rouge pur : `0xBF0909`, la valeur que donne la formule de RavenEmu Android ;
+  - les options v2 : libellés, catégories et valeurs par défaut ;
+  - un code de triche refusé, signalé avec sa raison, et un code accepté, appliqué dès l'image suivante.
+- `corvuscore_cheats`, nouveau :
+  - le chiffrement contre le vecteur de référence de l'algorithme (clé et bloc nuls), et l'aller-retour avec les graines GameShark et Action Replay ;
+  - le décodage de chaque format, dont l'exemple GameShark de Pan Docs ;
+  - les conditions, les blocs IF/ELSE/ENDIF, les séries et les pointeurs, exécutés sur une mémoire factice ;
+  - les refus, chacun avec sa raison.
+- `gb_corvus_core` : un code Game Genie appliqué ou écarté par sa comparaison, un code GameShark en WRAM, en banque de WRAM GBC et en banque de RAM de cartouche, et des codes conservés à la réinitialisation.
+- `gba_corvus_core` :
+  - des codes qui ne font que lire laissent l'état identique, octet pour octet, à celui d'une console sans codes ;
+  - des écritures appliquées, conservées après un état, retirées avec la liste.
+
 ## 0.11.0 - 2026-10-23
 
 Cette version porte depuis RavenCore 0.11.0 la correction du câble link distant GBA quand le réseau ajoute de la latence : un échange Pokémon entre un téléphone et un PC finissait en « Erreur de communication » dès la salle d'échange. Le protocole reste en version 2 et se relie à la 0.10.0. L'API C ne change pas ; l'API C++ gagne une méthode.

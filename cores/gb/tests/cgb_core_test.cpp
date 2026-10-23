@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 #include "corvuscore/core.hpp"
+#include "corvuscore/gb/core.hpp"
 
 #include "check.hpp"
 #include "synthetic_roms.hpp"
@@ -443,6 +444,139 @@ std::vector<std::uint8_t> serial_rom(std::uint8_t sent, std::uint8_t control) {
     return rom;
 }
 
+/**
+ * Game Genie : l'octet de ROM est remplacé à la lecture, si la comparaison
+ * l'accepte. GameShark : l'octet est récrit à chaque image, dans la banque
+ * de WRAM ou de RAM de cartouche que choisit le code.
+ */
+void cheats_test() {
+    const auto parse = [](const char* code) { return corvuscore::parse_cheat(corvuscore::Console::game_boy, code); };
+    const auto byte_at = [](const corvuscore::Core& core, std::uint32_t address) {
+        std::array<std::uint8_t, 1> byte{};
+        check(core.read_achievement_memory(address, byte) == 1, "octet illisible");
+        return byte[0];
+    };
+    std::vector<std::int32_t> frame(160 * 144);
+    // boucle : LD A,($4A12) ; LD ($C000),A ; LD A,($0200) ; LD ($C001),A ; JR boucle
+    auto rom = rom_running(minimal_game_boy_rom(),
+                           {0xfa, 0x12, 0x4a, 0xea, 0x00, 0xc0, 0xfa, 0x00, 0x02, 0xea, 0x01, 0xc0, 0x18, 0xf2});
+    rom[0x4a12] = 0x05;
+    rom[0x0200] = 0x77;
+    // 4A12 : 05 devient 3E ; 0200 : 05 deviendrait 99, mais l'octet vaut 77.
+    const std::vector<corvuscore::Cheat> cheats{parse("3EA-12B-FAE + 992-00F-FAE"), parse("01AA10C0"),
+                                              parse("933300D0")};
+    for (const bool color : {false, true}) {
+        rom[0x143] = color ? 0x80 : 0x00;
+        auto core = corvuscore::make_game_boy_core();
+        core->load_rom(rom, {});
+        core->set_cheats(cheats);
+        core->run_frame(frame, true);
+        check(byte_at(*core, 0xc000) == 0x3e, "Game Genie : octet de ROM non remplacé");
+        check(byte_at(*core, 0xc001) == 0x77, "Game Genie : comparaison ignorée");
+        check(byte_at(*core, 0xc010) == 0xaa, "GameShark : octet non écrit");
+        // Banque 3 de la WRAM de la GBC ; une Game Boy n'a que la banque 1.
+        check(byte_at(*core, color ? 0x11000 : 0xd000) == 0x33, "GameShark : banque de WRAM");
+
+        const auto state = core->save_state();
+        core->reset();
+        core->run_frame(frame, true);
+        check(byte_at(*core, 0xc000) == 0x3e, "Game Genie perdu à la réinitialisation");
+        core->set_cheats({});
+        core->load_state(state);
+        core->run_frame(frame, true);
+        check(byte_at(*core, 0xc000) == 0x05, "Game Genie retiré toujours appliqué");
+    }
+
+    // MBC5 + RAM + pile, 4 banques de RAM : le code vise la banque 2, RAM désactivée.
+    auto battery_rom = rom_running(minimal_game_boy_rom(), {0x18, 0xfe});
+    battery_rom[0x147] = 0x1b;
+    battery_rom[0x149] = 0x03;
+    auto core = corvuscore::make_game_boy_core();
+    core->load_rom(battery_rom, {});
+    const std::array<corvuscore::Cheat, 1> sram{parse("025500A0")};
+    core->set_cheats(sram);
+    core->run_frame(frame, true);
+    const auto battery = core->snapshot_battery_ram();
+    check(core->battery_ram_dirty() && battery && battery->data.size() == 0x8000 && battery->data[0x4000] == 0x55,
+          "GameShark : banque de RAM de cartouche");
+
+    const std::array<corvuscore::Cheat, 1> gba{corvuscore::parse_cheat(corvuscore::Console::game_boy_advance, "32000000 0001")};
+    expect_failure<std::invalid_argument>([&] { core->set_cheats(gba); }, "code GBA accepté par la Game Boy");
+}
+
+/**
+ * Registres laissés par la boot ROM (Pan Docs) : une GBA démarre en GBC avec
+ * B = 1, ou, pour un jeu Game Boy, avec B + 1 et les drapeaux de ce INC B.
+ */
+void agb_hardware_test() {
+    // PUSH AF ; POP DE ; LD A,B ; LD ($C000),A ; LD A,E ; LD ($C001),A ; JR $
+    auto rom = rom_running(minimal_game_boy_rom(), {0xf5, 0xd1, 0x78, 0xea, 0x00, 0xc0, 0x7b, 0xea, 0x01, 0xc0, 0x18, 0xfe});
+    // Jeu Game Boy « Nintendo » dont le titre fait 0x0F : B vaut 0x0F sur GBC.
+    rom[0x14b] = 0x01;
+    rom[0x134] = 0x0f;
+    struct Case {
+        corvuscore::gb::HardwareModel model;
+        std::uint8_t cgb_flag;
+        std::uint8_t b;
+        std::uint8_t f;
+    };
+    for (const auto& [model, cgb_flag, b, f] : {Case{corvuscore::gb::HardwareModel::cgb, 0x80, 0x00, 0x80},
+                                                Case{corvuscore::gb::HardwareModel::agb, 0x80, 0x01, 0x00},
+                                                Case{corvuscore::gb::HardwareModel::cgb, 0x00, 0x0f, 0x80},
+                                                Case{corvuscore::gb::HardwareModel::agb, 0x00, 0x10, 0x20}}) {
+        rom[0x143] = cgb_flag;
+        auto core = corvuscore::gb::make_core(model);
+        core->load_rom(rom, {});
+        std::vector<std::int32_t> frame(160 * 144);
+        core->run_frame(frame, true);
+        std::array<std::uint8_t, 2> registers{};
+        check(core->read_achievement_memory(0xc000, registers) == 2, "registres de démarrage illisibles");
+        check(registers[0] == b && registers[1] == f, "registres de démarrage GBC/GBA incorrects");
+        check(core->framebuffer_format() == corvuscore::FramebufferFormat::argb_8888, "GBA : image en couleurs attendue");
+    }
+}
+
+/**
+ * Un état pris pendant la boot ROM exige la même boot ROM ; pris après elle,
+ * il se recharge avec ou sans boot ROM (le joueur peut l'ajouter ou la retirer).
+ */
+void boot_rom_state_test() {
+    const auto boot_rom = [](std::uint8_t marker) {
+        std::vector<std::uint8_t> image(0x100);
+        // LD A,marker ; LD ($C010),A ; NOP… ; LD A,1 ; LDH ($50),A : le jeu commence en 0100.
+        const std::array<std::uint8_t, 5> start{0x3e, marker, 0xea, 0x10, 0xc0};
+        const std::array<std::uint8_t, 4> leave{0x3e, 0x01, 0xe0, 0x50};
+        std::copy(start.begin(), start.end(), image.begin());
+        std::copy(leave.begin(), leave.end(), image.begin() + 0xfc);
+        return image;
+    };
+    const auto rom = rom_running(minimal_game_boy_rom(), {0x18, 0xfe});
+    std::vector<std::int32_t> frame(160 * 144);
+    const auto make = [&](std::span<const std::uint8_t> boot) {
+        auto core = corvuscore::gb::make_core(corvuscore::gb::HardwareModel::dmg, boot);
+        core->load_rom(rom, {});
+        return core;
+    };
+    const auto boot = boot_rom(0x42), other = boot_rom(0x24);
+    auto with_boot = make(boot);
+    const auto during = with_boot->save_state();
+    with_boot->run_frame(frame, true);
+    std::array<std::uint8_t, 1> marker{};
+    check(with_boot->read_achievement_memory(0xc010, marker) == 1 && marker[0] == 0x42, "boot ROM non exécutée");
+    const auto after = with_boot->save_state();
+
+    auto without = make({});
+    without->load_state(after);
+    expect_failure<corvuscore::SaveStateError>([&] { without->load_state(during); },
+                                             "état pris pendant la boot ROM accepté sans elle");
+    auto other_boot = make(other);
+    other_boot->load_state(after);
+    expect_failure<corvuscore::SaveStateError>([&] { other_boot->load_state(during); },
+                                             "état pris pendant la boot ROM accepté avec une autre");
+    with_boot->load_state(during);
+    with_boot->load_state(without->save_state());
+}
+
 void link_cable_test() {
     auto master = corvuscore::make_game_boy_core();
     auto slave = corvuscore::make_game_boy_core();
@@ -467,6 +601,9 @@ int main() {
     invalid_rom_test();
     game_boy_smoke_test();
     link_cable_test();
+    agb_hardware_test();
+    boot_rom_state_test();
+    cheats_test();
     game_boy_color_and_battery_test();
     mbc6_large_state_test();
     mbc7_core_contract_test();

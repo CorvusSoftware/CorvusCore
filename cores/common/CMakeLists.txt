@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 add_library(corvuscore_common STATIC
+    src/cheats.cpp
     src/core.cpp
     src/remote_link.cpp
     src/sha256.cpp
@@ -23,4 +24,9 @@ if(BUILD_TESTING)
     target_include_directories(corvuscore_binary_io_tests PRIVATE tests/support)
     target_link_libraries(corvuscore_binary_io_tests PRIVATE corvuscore_common)
     add_test(NAME corvuscore_binary_io COMMAND corvuscore_binary_io_tests)
+
+    add_executable(corvuscore_cheat_tests tests/cheats_test.cpp)
+    target_include_directories(corvuscore_cheat_tests PRIVATE tests/support)
+    target_link_libraries(corvuscore_cheat_tests PRIVATE corvuscore_common)
+    add_test(NAME corvuscore_cheats COMMAND corvuscore_cheat_tests)
 endif()

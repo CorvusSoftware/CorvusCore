@@ -36,18 +36,22 @@ Pour ne compiler que les moteurs, ajoutez `-DCORVUSCORE_BUILD_LIBRETRO=OFF -DBUI
 ## Utiliser avec RetroArch
 
 1. Téléchargez l'archive adaptée à votre plateforme depuis les [releases](https://github.com/CorvusSoftware/CorvusCore/releases), ou les artefacts d'une [exécution CI](https://github.com/CorvusSoftware/CorvusCore/actions/workflows/ci.yml) pour la version de développement.
-2. Extrayez les fichiers `cores/*_libretro.*` dans le dossier **Cœurs** configuré par RetroArch, et les fichiers `info/*.info` dans son dossier **Informations des cœurs** (Paramètres → Dossiers).
+2. Sur ordinateur, copiez les fichiers `cores/*_libretro.*` dans le dossier **Cœurs** de RetroArch et les fichiers `info/*.info` dans le dossier **Informations des cœurs** (Paramètres → Dossiers). Sur Android, installez séparément les fichiers `*_libretro_android.so` via **Charger un cœur → Installer ou restaurer un cœur**.
 3. Chargez le cœur voulu dans **Menu principal → Charger un cœur**.
 
 | Plateforme | Binaires Libretro | Archive de release |
 | --- | --- | --- |
-| Linux x86-64 | `.so` | `corvuscore-libretro-vX.Y.Z-linux-x86_64.zip` |
+| Linux x86-64 | `.so` | `corvuscore-libretro-vX.Y.Z-linux-x86_64.tar.gz` |
 | Windows x86-64 | `.dll` | `corvuscore-libretro-vX.Y.Z-windows-x86_64.zip` |
-| macOS (architecture du runner) | `.dylib` | `corvuscore-libretro-vX.Y.Z-macos-{x86_64,arm64}.zip` |
-| Android ARM64 | `.so` | `corvuscore-libretro-vX.Y.Z-android-arm64-v8a.zip` |
-| Android ARMv7 | `.so` | `corvuscore-libretro-vX.Y.Z-android-armeabi-v7a.zip` |
+| macOS 11+ (Apple Silicon et Intel) | `.dylib` | `corvuscore-libretro-vX.Y.Z-macos-universal.zip` |
+| Android ARM64 | `*_libretro_android.so` | `corvuscore-libretro-vX.Y.Z-android-arm64-v8a.zip` |
+| Android ARMv7 | `*_libretro_android.so` | `corvuscore-libretro-vX.Y.Z-android-armeabi-v7a.zip` |
 
 Trois bibliothèques sont fournies par plateforme : `corvuscore_gb_libretro` (Game Boy), `corvuscore_gbc_libretro` (Game Boy Color) et `corvuscore_gba_libretro` (Game Boy Advance). Utilisez **RetroArch 64 bits** avec les binaires Windows x86-64 ; les `.so` Linux ne fonctionnent pas sous Windows. Sur Android, l'installation de cœurs personnalisés dépend de la version et des permissions de RetroArch.
+
+Les options des cœurs Libretro sont disponibles en français, regroupées en catégories **Image**, **Commandes**, **Système** et **Cartouche** : palette verte ou Pocket pour CorvusGB, correction LCD sur CorvusGBC/CorvusGBA, **mélange d’images** (moyenne ou rémanence), autorisation facultative des directions opposées et **codes de triche** (Game Genie, GameShark, Codebreaker, Action Replay selon la console). Les options d’image s’appliquent sans redémarrer le jeu.
+
+Pour **CorvusGB** et **CorvusGBC**, les boot ROMs facultatives peuvent être chargées depuis le dossier système de RetroArch (`dmg_boot.bin`, `gb_bios.bin`, `cgb_boot.bin`, `gbc_bios.bin`, `agb_boot.bin`). CorvusGBC permet aussi de choisir le mode **Game Boy Advance** pour les jeux GBC. Les cartouches **MBC30** sont prises en charge.
 
 Les cœurs gèrent la vibration (MBC5 Rumble, Drill Dozer, WarioWare: Twisted!) et les capteurs des cartouches, pilotés au stick analogique gauche :
 
@@ -81,7 +85,7 @@ Les cœurs déclarent à RetroArch la mémoire que surveille RetroAchievements :
 Après `cmake --install`, utilisez le paquet CMake :
 
 ```cmake
-find_package(CorvusCore 0.11 REQUIRED)
+find_package(CorvusCore 0.13 REQUIRED)
 target_link_libraries(mon_app PRIVATE CorvusCore::corvuscore_c_api)  # ou CorvusCore::corvuscore en C++
 ```
 
@@ -103,7 +107,7 @@ Les tests de base n'utilisent aucune ROM. La CI exécute en plus des suites de t
 
 | Console | Suites | Documentation |
 | --- | --- | --- |
-| GB / GBC | Mooneye Test Suite, Blargg, dmg-acid2, cgb-acid2 (198 tests) | [Tests GB/GBC](cores/gb/tests/README.md) |
+| GB / GBC | Mooneye Test Suite, Blargg, dmg-acid2, cgb-acid2 (200 tests) | [Tests GB/GBC](cores/gb/tests/README.md) |
 | GBA | jsmolka/gba-tests, FuzzARM | [Tests GBA](cores/gba/tests/README.md) |
 
 Pour les lancer en local :
@@ -118,7 +122,7 @@ ctest --test-dir build --output-on-failure
 
 ## Versions
 
-Version actuelle : **0.11.0**. Chaque version est publiée sur la page des [releases](https://github.com/CorvusSoftware/CorvusCore/releases) avec les cœurs Libretro pour Linux, Windows, macOS et Android. Ses évolutions sont détaillées dans le [journal des modifications](CHANGELOG.md).
+Version actuelle : **0.13.0**. Chaque version est publiée sur la page des [releases](https://github.com/CorvusSoftware/CorvusCore/releases) avec les cœurs Libretro pour Linux, Windows, macOS et Android. Ses évolutions sont détaillées dans le [journal des modifications](CHANGELOG.md).
 
 ## Contribuer
 

@@ -81,7 +81,7 @@ Les cœurs déclarent à RetroArch la mémoire que surveille RetroAchievements :
 Après `cmake --install`, utilisez le paquet CMake :
 
 ```cmake
-find_package(CorvusCore 0.10 REQUIRED)
+find_package(CorvusCore 0.11 REQUIRED)
 target_link_libraries(mon_app PRIVATE CorvusCore::corvuscore_c_api)  # ou CorvusCore::corvuscore en C++
 ```
 
@@ -118,7 +118,7 @@ ctest --test-dir build --output-on-failure
 
 ## Versions
 
-Version actuelle : **0.10.0**. Chaque version est publiée sur la page des [releases](https://github.com/CorvusSoftware/CorvusCore/releases) avec les cœurs Libretro pour Linux, Windows, macOS et Android. Ses évolutions sont détaillées dans le [journal des modifications](CHANGELOG.md).
+Version actuelle : **0.11.0**. Chaque version est publiée sur la page des [releases](https://github.com/CorvusSoftware/CorvusCore/releases) avec les cœurs Libretro pour Linux, Windows, macOS et Android. Ses évolutions sont détaillées dans le [journal des modifications](CHANGELOG.md).
 
 ## Contribuer
 

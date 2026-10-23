@@ -9,6 +9,36 @@ Ce fichier recense les évolutions notables de CorvusCore (anciennement RavenCor
 - Renommage du projet en **CorvusCore** sous **CorvusSoftware**, avec namespaces, API C, cibles CMake, variables de build, sorties Libretro, chemins d'en-tête et documentation cohérents.
 - **Rupture de compatibilité des noms d'API :** les intégrations externes utilisant `ravenemu` doivent migrer vers `corvuscore`. Historique antérieur préservé ci-dessous.
 
+## 0.11.0 - 2026-10-23
+
+Cette version porte depuis RavenCore 0.11.0 la correction du câble link distant GBA quand le réseau ajoute de la latence : un échange Pokémon entre un téléphone et un PC finissait en « Erreur de communication » dès la salle d'échange. Le protocole reste en version 2 et se relie à la 0.10.0. L'API C ne change pas ; l'API C++ gagne une méthode.
+
+### Corrigé
+
+- **Câble link distant GBA : l'enfant prenait des images d'avance.** Le parent attend un aller-retour réseau par transfert. Pokémon en enchaîne neuf par image : à 20 ms d'aller-retour, le parent tombait vers 5 images par seconde, pendant que l'enfant restait à 60. L'enfant prenait ainsi des centaines d'images d'avance, et le jeu finissait par couper la liaison.
+  - L'enfant suit désormais l'horloge du parent grâce aux écarts annoncés à chaque transfert. Tant que les transferts se suivent à moins de deux images d'écart, il ne la devance pas de plus de trois images : il attend le transfert suivant, une seconde au plus. Si le parent se tait au-delà, ou quitte le mode multijoueur, l'enfant reprend sa route ; l'avance prise hors liaison ne compte pas.
+  - Mesuré sur un échange Pokémon Rubis ↔ Émeraude complet, avec la latence dès l'arrivée au Centre Pokémon et deux consoles tenues à 60 images par seconde :
+
+    | Aller-retour | 0.10.0 | 0.11.0 |
+    |---|---|---|
+    | 0 ms | échange complet, 60 images par seconde | échange complet, 60 images par seconde |
+    | 6 ms | non mesuré ainsi | échange complet, les deux consoles vers 16 images par seconde pendant la liaison |
+    | 20 ms | « Erreur de communication » dans la salle d'échange | échange complet, les deux consoles vers 5 images par seconde pendant la liaison |
+
+### Modifié
+
+- **Écart des transferts GBA.** Une GBA envoie l'écart réel depuis son transfert précédent ; la 0.10.0 le plafonnait à 125 829 cycles. Une console en 0.10.0 le plafonne toujours à la réception : rien ne change pour elle. Face à un partenaire en 0.10.0, reconnu à un écart d'exactement 125 829 cycles, une console en 0.11.0 ne règle pas son pas sur lui.
+- `RemoteLink::wait_until` attend un message sans le prendre, jusqu'à une échéance.
+
+### Compatibilité des états instantanés
+
+- **GBA : format 16** et **GB/GBC : format 11**, inchangés.
+- **API C : version 0**, inchangée. Le paquet CMake se demande désormais avec `find_package(CorvusCore 0.11)`.
+
+### Tests
+
+- `corvuscore_remote_link` : pas du parent en GBA, comme dans les salles du Club Câble. Le parent fait 12 images de 9 transferts chacune, à 0 et 5 ms de latence, et l'enfant tourne comme dans une application. Entre le premier transfert et le dernier, l'enfant compte au plus 15 images. Avec la version 0.10.0, il en compte 88 à 5 ms.
+
 ## 0.10.0 - 2026-10-23
 
 Cette version porte les corrections du câble link distant de RavenCore 0.10.0 dans CorvusCore : les échanges Pokémon (Émeraude, Rubis, Saphir, et Rouge, Bleu, Or, Argent en Game Boy) finissaient en « Erreur de communication ». Le protocole du câble passe en version 2, incompatible avec la 0.9 : les deux appareils doivent se mettre à jour. L'API C ne change pas ; le format des états non plus.

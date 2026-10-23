@@ -7,7 +7,7 @@
 #if defined(CORVUSCORE_LIBRETRO_GB)
 #include <corvuscore/gb/core.hpp>
 #elif defined(CORVUSCORE_LIBRETRO_GBC)
-#include <corvuscore/gbc/core.hpp>
+#include <corvuscore/gb/core.hpp>
 #elif defined(CORVUSCORE_LIBRETRO_GBA)
 #else
 #error "Choose exactly one Libretro core"
@@ -19,8 +19,11 @@
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
+#include <initializer_list>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -37,6 +40,10 @@ retro_audio_sample_t sample_cb = nullptr;
 retro_audio_sample_batch_t batch_cb = nullptr;
 retro_input_poll_t poll_cb = nullptr;
 retro_input_state_t input_cb = nullptr;
+retro_log_printf_t log_cb = nullptr;
+// The frontend accepts a null frame: the previous image is shown again.
+bool can_dupe = false;
+bool run_error_logged = false;
 
 std::unique_ptr<corvuscore::Core> core;
 std::vector<std::uint8_t> rom;
@@ -95,29 +102,73 @@ std::array<std::size_t, achievement_regions.size()> achievement_sizes{};
 
 #if defined(CORVUSCORE_LIBRETRO_GB)
 constexpr const char* label = "CorvusGB";
+constexpr const char* name = "CorvusGB";
 constexpr const char* extensions = "gb|sgb";
 constexpr unsigned width = 160, height = 144;
 constexpr double fps = 4'194'304.0 / 70'224.0;
-std::unique_ptr<corvuscore::Core> new_core() {
-    return corvuscore::gb::make_core(corvuscore::gb::HardwareModel::dmg);
-}
+#define CORVUSCORE_OPTION(name) "corvuscore_gb_" name
 #elif defined(CORVUSCORE_LIBRETRO_GBC)
 constexpr const char* label = "CorvusGBC";
+constexpr const char* name = "CorvusGBC";
 constexpr const char* extensions = "gbc|gb";
 constexpr unsigned width = 160, height = 144;
 constexpr double fps = 4'194'304.0 / 70'224.0;
-std::unique_ptr<corvuscore::Core> new_core() { return corvuscore::gbc::make_core(); }
+#define CORVUSCORE_OPTION(name) "corvuscore_gbc_" name
 #else
 constexpr const char* label = "CorvusGBA";
+constexpr const char* name = "CorvusGBA";
 constexpr const char* extensions = "gba";
 constexpr unsigned width = 240, height = 160;
 constexpr double fps = 16'777'216.0 / 280'896.0;
-std::unique_ptr<corvuscore::Core> new_core() { return corvuscore::make_gba_core(std::nullopt); }
+#define CORVUSCORE_OPTION(name) "corvuscore_gba_" name
 #endif
 
-constexpr std::array<std::uint32_t, 4> dmg_shades{
-    0x00e0f8d0, 0x0088c070, 0x00346856, 0x00081820
-};
+// Cheats from the frontend's menu, by index. A disabled or refused cheat
+// keeps its slot, empty, so that later indexes stay where the frontend put them.
+std::vector<std::optional<corvuscore::Cheat>> cheats;
+constexpr unsigned max_cheats = 1024;
+
+// Teintes d'un jeu Game Boy, de la plus claire à la plus sombre : le vert de
+// l'écran d'origine, ou les gris du Game Boy Pocket (luminance des mêmes
+// teintes, comme la palette « Pocket » de RavenEmu Android).
+using Shades = std::array<std::uint32_t, 4>;
+constexpr Shades dmg_shades{0x00e0f8d0, 0x0088c070, 0x00346856, 0x00081820};
+#if defined(CORVUSCORE_LIBRETRO_GB)
+constexpr Shades pocket_shades{0x00ececec, 0x00a6a6a6, 0x00565656, 0x00141414};
+#endif
+Shades shades = dmg_shades;
+
+// Correction LCD des consoles couleur, la même que RavenEmu Android (réglée à
+// l'œil, pas d'après les mesures d'un écran) : environ 28 % de désaturation
+// vers la luminance Rec. 709, puis le gamma 1,15 d'un écran réfléchissant.
+bool lcd_correction = false;
+const std::array<std::uint8_t, 256> lcd_gamma = [] {
+    std::array<std::uint8_t, 256> table{};
+    for (std::size_t value = 0; value < table.size(); ++value)
+        table[value] = static_cast<std::uint8_t>(std::lround(255.0 * std::pow(static_cast<double>(value) / 255.0, 1.15)));
+    return table;
+}();
+std::uint32_t lcd_corrected(std::uint32_t pixel) {
+    const int r = static_cast<int>((pixel >> 16U) & 255U);
+    const int g = static_cast<int>((pixel >> 8U) & 255U);
+    const int b = static_cast<int>(pixel & 255U);
+    const int luma = (54 * r + 183 * g + 19 * b) >> 8;
+    // 72/256 du chemin vers la luminance : un mélange, toujours entre 0 et 255.
+    const auto channel = [luma](int value) -> std::uint32_t {
+        return lcd_gamma[static_cast<std::size_t>(value + (((luma - value) * 72) >> 8))];
+    };
+    return channel(r) << 16U | channel(g) << 8U | channel(b);
+}
+
+// Mélange d'images, après la conversion des couleurs. « Mélange » montre la
+// moyenne des deux dernières images : un objet affiché une image sur deux
+// reste visible, à moitié. « Rémanence » garde 3/8 de l'image affichée, comme
+// un écran LCD lent. L'historique repart à chaque jeu et à chaque changement.
+enum class Blending { off, mix, ghosting };
+Blending blending = Blending::off;
+std::vector<std::uint32_t> blend_history;
+// Haut et bas, ou gauche et droite, ensemble : impossible sur la croix.
+bool opposing_allowed = false;
 // MBC7 accelerometer (Kirby Tilt 'n' Tumble, Command Master) driven by the
 // left analog stick. The cartridge reads 0x81D0 at rest and moves by about
 // 0x70 per g; a full deflection is a 1 g tilt. Signs follow accelerometer
@@ -136,13 +187,158 @@ static_assert(tilt_from_stick(-0x8000, 0).x == tilt_units_per_g);
 static_assert(tilt_from_stick(0, -0x8000).y == -tilt_units_per_g);
 static_assert(tilt_from_stick(0, 0x7fff).y == tilt_units_per_g);
 
-#if defined(CORVUSCORE_LIBRETRO_GBA)
-// Core options for games whose cartridge detection fails. They are read when a
-// game loads: the SAVE_RAM size must not change while the frontend holds it.
+void log_line(retro_log_level level, const std::string& text) {
+    if (log_cb) log_cb(level, "[%s] %s\n", name, text.c_str());
+}
+// A message on screen, for a few seconds.
+void show_message(const std::string& text) {
+    if (!env_cb) return;
+    retro_message message{text.c_str(), 300};
+    env_cb(RETRO_ENVIRONMENT_SET_MESSAGE, &message);
+}
+// The frontend only says that the game did not load: the reason goes in the
+// log and on screen.
+void report_load_failure(const std::string& reason) {
+    log_line(RETRO_LOG_ERROR, "jeu refusé : " + reason);
+    show_message(std::string(name) + " : jeu refusé (" + reason + ")");
+}
+// The engine takes the whole list at once; it runs from the next frame.
+void apply_cheats() {
+    if (!core) return;
+    std::vector<corvuscore::Cheat> active;
+    for (const auto& cheat : cheats)
+        if (cheat) active.push_back(*cheat);
+    core->set_cheats(active);
+}
+
+// Core options, labelled in French and sorted in categories by a frontend
+// that knows options v2; an older one gets the plain « Label; a|b|c » list.
+// The first choice is the default.
+struct OptionChoice { const char* value; const char* label; };
+struct OptionSpec {
+    const char* key;
+    const char* label;
+    const char* info;
+    const char* category;
+    std::vector<OptionChoice> choices;
+};
+#if !defined(CORVUSCORE_LIBRETRO_GB)
+OptionSpec lcd_option(const char* key) {
+    return {key, "Correction des couleurs LCD",
+            "Adoucit les couleurs vives pour imiter l'écran réfléchissant de la console.", "video",
+            {{"disabled", "Désactivée"}, {"enabled", "Activée"}}};
+}
+#endif
+const std::vector<OptionSpec> option_specs{
+    {CORVUSCORE_OPTION("frame_blending"), "Mélange d'images",
+     "Atténue le scintillement des jeux qui alternent deux images, comme le faisait l'écran de la console.", "video",
+     {{"disabled", "Désactivé"}, {"mix", "Mélange des deux dernières images"}, {"ghosting", "Rémanence de l'écran LCD"}}},
+    {CORVUSCORE_OPTION("opposing_directions"), "Directions opposées",
+     "Haut et bas, ou gauche et droite, ensemble : impossible sur la croix de la console, et certains jeux "
+     "plantent. Bloquées, aucune des deux n'est transmise.", "input",
+     {{"blocked", "Bloquées"}, {"allowed", "Autorisées"}}},
+#if !defined(CORVUSCORE_LIBRETRO_GBA)
+    {CORVUSCORE_OPTION("boot_rom"), "Boot ROM",
+     "Appliquée au chargement du jeu, si son fichier est dans le dossier système : dmg_boot.bin ou gb_bios.bin "
+     "(Game Boy), cgb_boot.bin ou gbc_bios.bin (Game Boy Color), agb_boot.bin (Game Boy Advance).", "system",
+     {{"enabled", "Utilisée si présente"}, {"disabled", "Non utilisée"}}},
+#endif
+#if defined(CORVUSCORE_LIBRETRO_GBC)
+    {"corvuscore_gbc_hardware", "Console émulée",
+     "Appliquée au chargement du jeu. Game Boy Advance : les jeux qui la reconnaissent débloquent leurs bonus "
+     "(Zelda Oracle, Shantae…).", "system",
+     {{"gbc", "Game Boy Color"}, {"gba", "Game Boy Advance"}}},
+#endif
+#if defined(CORVUSCORE_LIBRETRO_GB)
+    {"corvuscore_gb_palette", "Palette", "Teintes des jeux Game Boy.", "video",
+     {{"dmg", "Vert (Game Boy)"}, {"pocket", "Gris (Game Boy Pocket)"}}},
+#elif defined(CORVUSCORE_LIBRETRO_GBC)
+    lcd_option("corvuscore_gbc_color_correction"),
+#else
+    lcd_option("corvuscore_gba_color_correction"),
+    // For games whose cartridge detection fails: the SAVE_RAM size must not
+    // change while the frontend holds it, so both apply when a game loads.
+    {"corvuscore_gba_save_type", "Type de sauvegarde",
+     "Appliqué au chargement du jeu. Auto reconnaît la puce de la cartouche.", "cartridge",
+     {{"auto", "Auto"}, {"sram", "SRAM 32 Kio"}, {"flash64", "Flash 64 Kio"}, {"flash128", "Flash 128 Kio"},
+      {"eeprom512", "EEPROM 512 octets"}, {"eeprom8k", "EEPROM 8 Kio"}, {"none", "Aucune"}}},
+    {"corvuscore_gba_rtc", "Horloge (RTC)", "Appliquée au chargement du jeu.", "cartridge",
+     {{"auto", "Auto"}, {"enabled", "Activée"}, {"disabled", "Désactivée"}}},
+    {"corvuscore_gba_solar_light", "Lumière du capteur solaire",
+     "Boktai : part du plein soleil que reçoit le capteur de la cartouche.", "cartridge",
+     {{"50", "50 %"}, {"60", "60 %"}, {"70", "70 %"}, {"80", "80 %"}, {"90", "90 %"}, {"100", "100 %"},
+      {"0", "0 %"}, {"10", "10 %"}, {"20", "20 %"}, {"30", "30 %"}, {"40", "40 %"}}},
+#endif
+};
+
+void declare_options() {
+    unsigned version = 0;
+    if (env_cb(RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION, &version) && version >= 2) {
+        static std::array<retro_core_option_v2_category, 5> categories{{
+            {"video", "Image", "Couleurs et rendu de l'image."},
+            {"input", "Commandes", "Croix et boutons."},
+            {"system", "Système", "Console émulée et boot ROM, appliquées au chargement du jeu."},
+            {"cartridge", "Cartouche", "Matériel de la cartouche, quand sa détection se trompe."},
+            {nullptr, nullptr, nullptr},
+        }};
+        static std::vector<retro_core_option_v2_definition> definitions;
+        definitions.assign(option_specs.size() + 1, retro_core_option_v2_definition{});
+        for (std::size_t index = 0; index < option_specs.size(); ++index) {
+            const auto& spec = option_specs[index];
+            auto& definition = definitions[index];
+            definition.key = spec.key;
+            definition.desc = spec.label;
+            definition.info = spec.info;
+            definition.category_key = spec.category;
+            for (std::size_t choice = 0; choice < spec.choices.size(); ++choice)
+                definition.values[choice] = {spec.choices[choice].value, spec.choices[choice].label};
+            definition.default_value = spec.choices.front().value;
+        }
+        retro_core_options_v2 options{categories.data(), definitions.data()};
+        if (env_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2, &options)) return;
+    }
+    static std::vector<std::string> texts;
+    static std::vector<retro_variable> variables;
+    texts.clear();
+    variables.clear();
+    for (const auto& spec : option_specs) {
+        std::string text = std::string(spec.label) + "; ";
+        for (std::size_t choice = 0; choice < spec.choices.size(); ++choice)
+            text += (choice ? "|" : "") + std::string(spec.choices[choice].value);
+        texts.push_back(std::move(text));
+    }
+    for (std::size_t index = 0; index < option_specs.size(); ++index)
+        variables.push_back({option_specs[index].key, texts[index].c_str()});
+    variables.push_back({nullptr, nullptr});
+    env_cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables.data());
+}
+
 const char* option(const char* key) {
     retro_variable variable{key, nullptr};
     return env_cb && env_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &variable) ? variable.value : nullptr;
 }
+bool option_is(const char* key, std::string_view value) {
+    const char* current = option(key);
+    return current && value == current;
+}
+// Image and input options: read when a game loads, and again whenever they change.
+void read_live_options() {
+#if defined(CORVUSCORE_LIBRETRO_GB)
+    shades = option_is("corvuscore_gb_palette", "pocket") ? pocket_shades : dmg_shades;
+#elif defined(CORVUSCORE_LIBRETRO_GBC)
+    lcd_correction = option_is("corvuscore_gbc_color_correction", "enabled");
+#else
+    lcd_correction = option_is("corvuscore_gba_color_correction", "enabled");
+#endif
+    const auto previous = blending;
+    blending = option_is(CORVUSCORE_OPTION("frame_blending"), "mix")        ? Blending::mix
+             : option_is(CORVUSCORE_OPTION("frame_blending"), "ghosting") ? Blending::ghosting
+                                                                         : Blending::off;
+    if (blending != previous) blend_history.clear();
+    opposing_allowed = option_is(CORVUSCORE_OPTION("opposing_directions"), "allowed");
+}
+
+#if defined(CORVUSCORE_LIBRETRO_GBA)
 // Boktai's solar sensor: a percentage of full sunlight, 0 to 100.
 void apply_solar_option(corvuscore::Core& machine) {
     int percent = 50;
@@ -152,7 +348,10 @@ void apply_solar_option(corvuscore::Core& machine) {
     }
     machine.set_solar_light(percent * 255 / 100);
 }
+#endif
 void apply_options(corvuscore::Core& machine) {
+    read_live_options();
+#if defined(CORVUSCORE_LIBRETRO_GBA)
     using corvuscore::GbaSaveType;
     struct SaveChoice { std::string_view value; GbaSaveType type; };
     constexpr std::array<SaveChoice, 6> save_choices{{
@@ -165,34 +364,67 @@ void apply_options(corvuscore::Core& machine) {
         for (const auto& choice : save_choices) if (choice.value == value) save_type = choice.type;
     machine.set_gba_forced_save_type(save_type);
     std::optional<bool> rtc;
-    if (const char* value = option("corvuscore_gba_rtc")) {
-        if (std::string_view(value) == "enabled") rtc = true;
-        else if (std::string_view(value) == "disabled") rtc = false;
-    }
+    if (option_is("corvuscore_gba_rtc", "enabled")) rtc = true;
+    else if (option_is("corvuscore_gba_rtc", "disabled")) rtc = false;
     machine.set_gba_forced_rtc(rtc);
     apply_solar_option(machine);
+#else
+    static_cast<void>(machine);
+#endif
 }
-void declare_options() {
-    std::array<retro_variable, 4> variables{{
-        {"corvuscore_gba_save_type",
-         "Save type (applied on game load); auto|sram|flash64|flash128|eeprom512|eeprom8k|none"},
-        {"corvuscore_gba_rtc", "Real-time clock (applied on game load); auto|enabled|disabled"},
-        {"corvuscore_gba_solar_light",
-         "Solar sensor light in % (Boktai); 50|60|70|80|90|100|0|10|20|30|40"},
-        {nullptr, nullptr},
-    }};
-    env_cb(RETRO_ENVIRONMENT_SET_VARIABLES, variables.data());
-}
-// Unlike the others, the light can change at any time during the game.
+// The image options and the solar light change at any time during the game.
 void update_options() {
     bool updated = false;
-    if (core && env_cb && env_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
-        apply_solar_option(*core);
+    if (!core || !env_cb || !env_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) || !updated) return;
+    read_live_options();
+#if defined(CORVUSCORE_LIBRETRO_GBA)
+    apply_solar_option(*core);
+#endif
+}
+
+#if !defined(CORVUSCORE_LIBRETRO_GBA)
+// Boot ROM du dossier système, si l'option le permet ; sinon CorvusCore démarre
+// le jeu dans l'état où la boot ROM l'aurait laissé. Un fichier d'une autre
+// taille est ignoré, et le journal dit pourquoi.
+std::vector<std::uint8_t> read_boot_rom(std::initializer_list<const char*> files,
+                                        std::initializer_list<std::size_t> sizes) {
+    const char* directory = nullptr;
+    if (option_is(CORVUSCORE_OPTION("boot_rom"), "disabled") || !env_cb ||
+        !env_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &directory) || !directory || !*directory)
+        return {};
+    const auto largest = std::max(sizes);
+    for (const char* file : files) {
+        const auto path = std::string(directory) + "/" + file;
+        std::ifstream input(path, std::ios::binary);
+        if (!input) continue;
+        std::vector<std::uint8_t> image(largest + 1);
+        input.read(reinterpret_cast<char*>(image.data()), static_cast<std::streamsize>(image.size()));
+        image.resize(static_cast<std::size_t>(input.gcount()));
+        if (std::find(sizes.begin(), sizes.end(), image.size()) != sizes.end()) {
+            log_line(RETRO_LOG_INFO, "boot ROM : " + path);
+            return image;
+        }
+        log_line(RETRO_LOG_WARN, "boot ROM ignorée, taille inattendue : " + path);
+    }
+    return {};
+}
+#endif
+#if defined(CORVUSCORE_LIBRETRO_GB)
+std::unique_ptr<corvuscore::Core> new_core() {
+    return corvuscore::gb::make_core(corvuscore::gb::HardwareModel::dmg,
+                                   read_boot_rom({"dmg_boot.bin", "gb_bios.bin"}, {0x100}));
+}
+#elif defined(CORVUSCORE_LIBRETRO_GBC)
+// La boot ROM de la GBA ne diffère de celle de la GBC que par ce qu'elle
+// laisse dans B : chacune a son fichier.
+std::unique_ptr<corvuscore::Core> new_core() {
+    const bool agb = option_is("corvuscore_gbc_hardware", "gba");
+    auto boot = agb ? read_boot_rom({"agb_boot.bin"}, {0x800, 0x900})
+                    : read_boot_rom({"cgb_boot.bin", "gbc_bios.bin"}, {0x800, 0x900});
+    return corvuscore::gb::make_core(agb ? corvuscore::gb::HardwareModel::agb : corvuscore::gb::HardwareModel::cgb, boot);
 }
 #else
-void apply_options(corvuscore::Core&) {}
-void declare_options() {}
-void update_options() {}
+std::unique_ptr<corvuscore::Core> new_core() { return corvuscore::make_gba_core(std::nullopt); }
 #endif
 
 struct Key { unsigned id; corvuscore::Button button; };
@@ -281,6 +513,24 @@ void clear_game() {
     pending_save_import = false;
     achievement_ram.clear();
     achievement_sizes = {};
+    blend_history.clear();
+    run_error_logged = false;
+}
+void blend_output() {
+    if (blending == Blending::off) return;
+    if (blend_history.size() != output_frame.size()) blend_history = output_frame;
+    for (std::size_t i = 0; i < output_frame.size(); ++i) {
+        const auto current = output_frame[i];
+        const auto previous = blend_history[i];
+        std::uint32_t blended = 0;
+        for (unsigned shift = 0; shift < 24; shift += 8) {
+            const auto now = (current >> shift) & 0xffU;
+            const auto before = (previous >> shift) & 0xffU;
+            blended |= (blending == Blending::mix ? (now + before + 1) / 2 : (now * 5 + before * 3 + 4) / 8) << shift;
+        }
+        output_frame[i] = blended;
+        blend_history[i] = blending == Blending::mix ? current : blended;
+    }
 }
 void refresh_video() {
     if (!core || !video_cb) return;
@@ -288,8 +538,10 @@ void refresh_video() {
     const bool indexed = core->framebuffer_format() == corvuscore::FramebufferFormat::indexed_4;
     for (std::size_t i = 0; i < native_frame.size(); ++i) {
         const auto pixel = static_cast<std::uint32_t>(native_frame[i]);
-        output_frame[i] = indexed ? dmg_shades[pixel & 3U] : (pixel & 0x00ffffffU);
+        output_frame[i] = indexed ? shades[pixel & 3U]
+                        : lcd_correction ? lcd_corrected(pixel) : (pixel & 0x00ffffffU);
     }
+    blend_output();
     video_cb(output_frame.data(), static_cast<unsigned>(spec.width),
              static_cast<unsigned>(spec.height),
              static_cast<std::size_t>(spec.width) * sizeof(std::uint32_t));
@@ -334,18 +586,27 @@ void declare_achievement_memory() {
     retro_memory_map map{descriptors.data(), static_cast<unsigned>(descriptors.size())};
     env_cb(RETRO_ENVIRONMENT_SET_MEMORY_MAPS, &map);
 }
-void refresh_audio() {
+// A frontend that does not want the sound of this frame still gets the
+// samples drained, or they would pile up for the next one.
+void refresh_audio(bool deliver) {
     if (!core) return;
     std::array<std::int16_t, 4096> pcm{};
     for (unsigned attempt = 0; attempt < 32; ++attempt) {
         const auto count = core->read_audio(pcm);
         if (count < 2) break;
         const auto frames = count / 2;
-        if (batch_cb) batch_cb(pcm.data(), frames);
-        else if (sample_cb) for (std::size_t i = 0; i < frames; ++i)
+        if (deliver && batch_cb) batch_cb(pcm.data(), frames);
+        else if (deliver && sample_cb) for (std::size_t i = 0; i < frames; ++i)
             sample_cb(pcm[2 * i], pcm[2 * i + 1]);
         if (count < pcm.size()) break;
     }
+}
+// What the frontend will use of this frame: it skips the image or the sound
+// of the frames it runs ahead or fast-forwards. Without an answer, both.
+int wanted_av() {
+    int flags = 0;
+    if (env_cb && env_cb(RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE, &flags)) return flags;
+    return RETRO_AV_ENABLE_VIDEO | RETRO_AV_ENABLE_AUDIO;
 }
 } // namespace
 
@@ -357,6 +618,8 @@ void retro_set_environment(retro_environment_t callback) {
     // address space (see declare_achievement_memory).
     bool achievements = true;
     if (!env_cb) return;
+    retro_log_callback logging{};
+    log_cb = env_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &logging) ? logging.log : nullptr;
     env_cb(RETRO_ENVIRONMENT_SET_SUPPORT_ACHIEVEMENTS, &achievements);
     declare_options();
 }
@@ -392,9 +655,16 @@ void retro_get_system_av_info(struct retro_system_av_info* info) {
 }
 bool retro_load_game(const struct retro_game_info* game) {
     clear_game();
-    if (!game || !game->data || !game->size || !env_cb) return false;
+    if (!env_cb) return false;
+    if (!game || !game->data || !game->size) {
+        report_load_failure("aucune donnée de jeu reçue");
+        return false;
+    }
     enum retro_pixel_format format = RETRO_PIXEL_FORMAT_XRGB8888;
-    if (!env_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &format)) return false;
+    if (!env_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &format)) {
+        report_load_failure("le frontend refuse les pixels XRGB8888");
+        return false;
+    }
     try {
         const auto* bytes = static_cast<const std::uint8_t*>(game->data);
         rom.assign(bytes, bytes + game->size);
@@ -417,16 +687,26 @@ bool retro_load_game(const struct retro_game_info* game) {
             throw std::runtime_error("Save state exceeds limits");
         state_capacity = state_bytes + 65544U;
         core = std::move(machine);
+        apply_cheats();
         sensors = core->cartridge_sensors();
         set_input_descriptors();
         declare_achievement_memory();
         retro_rumble_interface rumble{};
         if (env_cb(RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE, &rumble)) rumble_cb = rumble.set_rumble_state;
+        can_dupe = false;
+        env_cb(RETRO_ENVIRONMENT_GET_CAN_DUPE, &can_dupe);
         return true;
-    } catch (const std::exception&) { clear_game(); return false; }
+    } catch (const std::exception& error) {
+        clear_game();
+        report_load_failure(error.what());
+        return false;
+    }
 }
 bool retro_load_game_special(unsigned, const struct retro_game_info*, std::size_t) { return false; }
-void retro_unload_game(void) { clear_game(); }
+void retro_unload_game(void) {
+    clear_game();
+    cheats.clear();
+}
 void retro_reset(void) {
     if (!core) return;
     try { import_save_ram_once(); core->reset(); update_save_ram(); update_rumble(); refresh_achievement_memory(true); }
@@ -437,9 +717,17 @@ void retro_run(void) {
     try {
         import_save_ram_once();
         if (poll_cb) poll_cb();
-        if (input_cb) for (const auto& key : keys)
-            core->set_button(key.button,
-                input_cb(0, RETRO_DEVICE_JOYPAD, 0, key.id) != 0);
+        if (input_cb) {
+            std::array<bool, keys.size()> held{};
+            for (std::size_t index = 0; index < keys.size(); ++index)
+                held[index] = input_cb(0, RETRO_DEVICE_JOYPAD, 0, keys[index].id) != 0;
+            // keys commence par haut, bas, gauche, droite.
+            if (!opposing_allowed) {
+                if (held[0] && held[1]) held[0] = held[1] = false;
+                if (held[2] && held[3]) held[2] = held[3] = false;
+            }
+            for (std::size_t index = 0; index < keys.size(); ++index) core->set_button(keys[index].button, held[index]);
+        }
         if ((sensors.tilt || sensors.rotation) && input_cb) {
             const int stick_x = input_cb(0, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT,
                                          RETRO_DEVICE_ID_ANALOG_X);
@@ -456,14 +744,24 @@ void retro_run(void) {
 #endif
         }
         update_options();
-        core->run_frame(native_frame, true);
+        const int av = wanted_av();
+        // An image is skipped only when the frontend can show the previous one.
+        const bool video = (av & RETRO_AV_ENABLE_VIDEO) != 0 || !can_dupe;
+        core->run_frame(native_frame, video);
         update_save_ram();
         update_rumble();
         refresh_achievement_memory(false);
-        refresh_video();
-        refresh_audio();
-    } catch (const std::exception&) {
-        // Never propagate an exception through Libretro's C ABI.
+        if (video) {
+            refresh_video();
+        } else if (video_cb) {
+            const auto spec = core->video_spec();
+            video_cb(nullptr, static_cast<unsigned>(spec.width), static_cast<unsigned>(spec.height), 0);
+        }
+        refresh_audio((av & RETRO_AV_ENABLE_AUDIO) != 0);
+    } catch (const std::exception& error) {
+        // Never propagate an exception through Libretro's C ABI; say it once per game.
+        if (!run_error_logged) log_line(RETRO_LOG_ERROR, std::string("image interrompue : ") + error.what());
+        run_error_logged = true;
     }
 }
 std::size_t retro_serialize_size(void) { return core ? state_capacity : 0; }
@@ -500,10 +798,45 @@ bool retro_unserialize(const void* data, std::size_t size) {
         update_rumble();
         refresh_achievement_memory(true);
         return true;
-    } catch (const std::exception&) { return false; }
+    } catch (const std::exception& error) {
+        log_line(RETRO_LOG_WARN, std::string("état refusé : ") + error.what());
+        return false;
+    }
 }
-void retro_cheat_reset(void) {}
-void retro_cheat_set(unsigned, bool, const char*) {}
+void retro_cheat_reset(void) {
+    cheats.clear();
+    try { apply_cheats(); } catch (const std::exception&) {}
+}
+// One menu entry: Game Genie or GameShark codes on Game Boy, Codebreaker,
+// GameShark or Action Replay codes on GBA, lines joined by '+' or spaces.
+// A refused code says why, on screen and in the log.
+void retro_cheat_set(unsigned index, bool enabled, const char* code) {
+    if (index >= max_cheats) {
+        log_line(RETRO_LOG_WARN, "code de triche " + std::to_string(index + 1) + " ignoré : trop de codes");
+        return;
+    }
+    try {
+        if (cheats.size() <= index) cheats.resize(index + 1);
+        cheats[index].reset();
+        if (enabled && code && *code) {
+#if defined(CORVUSCORE_LIBRETRO_GBA)
+            constexpr auto console = corvuscore::Console::game_boy_advance;
+#else
+            constexpr auto console = corvuscore::Console::game_boy;
+#endif
+            try {
+                cheats[index] = corvuscore::parse_cheat(console, code);
+            } catch (const corvuscore::CheatError& error) {
+                const auto number = std::to_string(index + 1);
+                log_line(RETRO_LOG_WARN, "code de triche " + number + " refusé : " + error.what());
+                show_message(std::string(name) + " : code de triche " + number + " refusé (" + error.what() + ")");
+            }
+        }
+        apply_cheats();
+    } catch (const std::exception& error) {
+        log_line(RETRO_LOG_ERROR, std::string("codes de triche non appliqués : ") + error.what());
+    }
+}
 unsigned retro_get_region(void) { return RETRO_REGION_NTSC; }
 // Battery SRAM is the only exposed mutable memory. System memory reaches the
 // frontend only through the memory map, a copy that writes cannot change: no

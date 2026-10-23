@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <corvuscore/cheats.hpp>
 #include <corvuscore/link_endpoint.hpp>
 #include <corvuscore/infrared_endpoint.hpp>
 
@@ -14,6 +15,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -154,6 +156,25 @@ public:
     using Error::Error;
 };
 
+/** Code de triche illisible ou non pris en charge ; le message dit pourquoi, en français. */
+class CheatError final : public Error {
+public:
+    using Error::Error;
+};
+
+/**
+ * Décode une entrée de triche pour `console` : une ou plusieurs lignes,
+ * séparées par des espaces, des retours à la ligne ou des « + ».
+ * - Game Boy et Game Boy Color : Game Genie (`ABC-DEF-GHI` ou `ABC-DEF`) et
+ *   GameShark (8 chiffres, comme `010238CD`), mélangeables.
+ * - GBA : Codebreaker non chiffré (`XAAAAAAA YYYY`), GameShark v1/v2 et Pro
+ *   Action Replay v3 chiffrés tels que l'appareil les affiche ; ces deux-là
+ *   se reconnaissent à leur déchiffrement.
+ * Lève CheatError pour un code illisible ou une fonction absente (patch de
+ * ROM GBA, changement de chiffrement DEADFACE, Codebreaker chiffré).
+ */
+[[nodiscard]] Cheat parse_cheat(Console console, std::string_view code);
+
 class Core;
 class RemoteLink;
 
@@ -220,6 +241,15 @@ public:
      * son bord supérieur s'éloigne du joueur.
      */
     virtual void set_gba_tilt(int, int) noexcept {}
+    /**
+     * Codes de triche actifs à partir de l'image suivante, à la place des
+     * précédents ; une liste vide les retire. Ils survivent aux changements
+     * de ROM, aux réinitialisations et aux états, sans y être enregistrés.
+     * Lève std::invalid_argument pour un code décodé pour une autre console.
+     */
+    virtual void set_cheats(std::span<const Cheat> cheats) {
+        if (!cheats.empty()) throw std::invalid_argument("Cette console ne prend pas de codes de triche");
+    }
 
     [[nodiscard]] virtual bool has_battery_ram() const noexcept = 0;
     [[nodiscard]] virtual bool battery_ram_dirty() const noexcept = 0;

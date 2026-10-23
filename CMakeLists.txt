@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 cmake_minimum_required(VERSION 3.22.1)
-project(CorvusCore VERSION 0.11.0 LANGUAGES CXX)
+project(CorvusCore VERSION 0.13.0 LANGUAGES CXX)
 
 # An unoptimized emulator is unusable: default to Release when this repository
 # is the main project and no build type was requested.

@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# CorvusCore - CorvusSoftware
+# Copyright (C) 2026 CorvusSoftware
+# SPDX-License-Identifier: AGPL-3.0-only
+
 # Télécharge l'archive publique game-boy-test-roms (Mooneye, Blargg, acid2…),
 # vérifie son SHA-256 et l'extrait. Usage : fetch_test_roms.sh DOSSIER
 # Puis : cmake ... -DCORVUSCORE_GB_TEST_ROMS=DOSSIER && ctest -R gb_rom_

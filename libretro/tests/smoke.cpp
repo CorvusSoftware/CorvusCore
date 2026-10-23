@@ -1,3 +1,7 @@
+// CorvusCore - CorvusSoftware
+// Copyright (C) 2026 CorvusSoftware
+// SPDX-License-Identifier: AGPL-3.0-only
+
 #include <libretro.h>
 #include <synthetic_roms.hpp>
 #include <algorithm>

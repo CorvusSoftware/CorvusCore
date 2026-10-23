@@ -1,3 +1,7 @@
+// CorvusCore - CorvusSoftware
+// Copyright (C) 2026 CorvusSoftware
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Inclut chaque en-tête public installé et appelle les deux interfaces.
 #include <corvuscore/bridge.h>
 #include <corvuscore/core.hpp>

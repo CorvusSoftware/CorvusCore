@@ -1,3 +1,7 @@
+# CorvusCore - CorvusSoftware
+# Copyright (C) 2026 CorvusSoftware
+# SPDX-License-Identifier: AGPL-3.0-only
+
 # Composants matériels CGB déjà extraits, portés par leur propre cible.
 #
 # Deux dépendances de sens opposé se croisent ici, et elles sont toutes les

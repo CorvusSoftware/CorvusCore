@@ -1,3 +1,7 @@
+// CorvusCore - CorvusSoftware
+// Copyright (C) 2026 CorvusSoftware
+// SPDX-License-Identifier: AGPL-3.0-only
+
 #ifndef CORVUSCORE_BRIDGE_H
 #define CORVUSCORE_BRIDGE_H
 

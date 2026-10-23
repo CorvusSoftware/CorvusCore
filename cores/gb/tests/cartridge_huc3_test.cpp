@@ -1,3 +1,7 @@
+// CorvusCore - CorvusSoftware
+// Copyright (C) 2026 CorvusSoftware
+// SPDX-License-Identifier: AGPL-3.0-only
+
 #include "cartridge/cartridge_factory.hpp"
 #include "cartridge/huc3.hpp"
 #include "machine/machine.hpp"

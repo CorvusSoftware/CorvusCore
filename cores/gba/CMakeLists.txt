@@ -1,3 +1,7 @@
+# CorvusCore - CorvusSoftware
+# Copyright (C) 2026 CorvusSoftware
+# SPDX-License-Identifier: AGPL-3.0-only
+
 add_library(gba_corvus_core STATIC
     src/core.cpp
     src/cpu/cpu.cpp

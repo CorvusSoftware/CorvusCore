@@ -1,3 +1,7 @@
+# CorvusCore - CorvusSoftware
+# Copyright (C) 2026 CorvusSoftware
+# SPDX-License-Identifier: AGPL-3.0-only
+
 # Les en-têtes publics exigent C++20 : seule cette exigence se propage aux
 # projets qui consomment les cœurs.
 add_library(corvuscore_options INTERFACE)

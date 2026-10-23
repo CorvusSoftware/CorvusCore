@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# CorvusCore - CorvusSoftware
+# Copyright (C) 2026 CorvusSoftware
+# SPDX-License-Identifier: AGPL-3.0-only
+
 # Télécharge les ROMs de test GBA publiques listées dans external_test_roms.txt
 # et vérifie leur SHA-256. Usage : fetch_test_roms.sh DOSSIER
 # Puis : cmake ... -DCORVUSCORE_GBA_TEST_ROMS=DOSSIER && ctest -R gba_rom_

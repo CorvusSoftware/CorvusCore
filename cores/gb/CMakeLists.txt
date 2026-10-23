@@ -1,3 +1,7 @@
+# CorvusCore - CorvusSoftware
+# Copyright (C) 2026 CorvusSoftware
+# SPDX-License-Identifier: AGPL-3.0-only
+
 add_library(gb_corvus_core STATIC src/core.cpp)
 target_include_directories(gb_corvus_core
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

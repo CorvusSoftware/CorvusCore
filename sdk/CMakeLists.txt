@@ -1,3 +1,7 @@
+# CorvusCore - CorvusSoftware
+# Copyright (C) 2026 CorvusSoftware
+# SPDX-License-Identifier: AGPL-3.0-only
+
 add_library(corvuscore_c_api STATIC src/bridge.cpp)
 target_compile_features(corvuscore_c_api PUBLIC cxx_std_20)
 target_include_directories(corvuscore_c_api PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)

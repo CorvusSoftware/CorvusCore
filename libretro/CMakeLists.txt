@@ -1,3 +1,7 @@
+# CorvusCore - CorvusSoftware
+# Copyright (C) 2026 CorvusSoftware
+# SPDX-License-Identifier: AGPL-3.0-only
+
 # Three independent shared Libretro adapters over the CorvusCore engines.
 
 # Only the Libretro interface is exported. The statically linked engines keep

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# CorvusCore - CorvusSoftware
+# Copyright (C) 2026 CorvusSoftware
+# SPDX-License-Identifier: AGPL-3.0-only
+
 """Exécute une suite GB/GBC externe déclarée par un manifeste strict.
 
 Le script ne télécharge et ne copie aucun artefact. Les chemins restent sous

@@ -1,3 +1,7 @@
+// CorvusCore - CorvusSoftware
+// Copyright (C) 2026 CorvusSoftware
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Câble link distant par l'API C : deux consoles sur deux fils, reliées par
 // un faux réseau qui livre les messages dans l'ordre, avec une latence.
 #include <corvuscore/bridge.h>

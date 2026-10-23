@@ -1,3 +1,7 @@
+// CorvusCore - CorvusSoftware
+// Copyright (C) 2026 CorvusSoftware
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Exécute une ROM de test GBA fournie séparément et rend un verdict.
 //
 // Protocole visé : celui des suites publiques qui terminent dans une boucle

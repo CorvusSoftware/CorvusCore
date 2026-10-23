@@ -1,3 +1,7 @@
+# CorvusCore - CorvusSoftware
+# Copyright (C) 2026 CorvusSoftware
+# SPDX-License-Identifier: AGPL-3.0-only
+
 # Style des sources C++ de CorvusCore, calqué sur le cœur GB : une instruction
 # par ligne, 120 colonnes. Appliqué aux fichiers au fil de leurs retouches.
 BasedOnStyle: LLVM

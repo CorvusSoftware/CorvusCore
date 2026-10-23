@@ -1,10 +1,9 @@
 # CorvusCore
 
-> **CorvusSoftware** — bibliothèque de cœurs d'émulation C++20, distribuée sous **GNU AGPL-3.0-only**. Projet issu de RavenCore, développé par GhostPunishR. Cette nouvelle identité utilise des namespaces, noms d'API, cibles CMake et binaires `corvuscore` et n'est pas compatible au niveau des noms d'API avec les anciennes intégrations `ravenemu`.
+> **CorvusSoftware** bibliothèque de cœurs d'émulation C++20, distribuée sous **GNU AGPL-3.0-only**. Projet issu de RavenCore, développé par GhostPunishR. Cette nouvelle identité utilise des namespaces, noms d'API, cibles CMake et binaires `corvuscore` et n'est pas compatible au niveau des noms d'API avec les anciennes intégrations `ravenemu`.
 
 
 [![CI](https://github.com/CorvusSoftware/CorvusCore/actions/workflows/ci.yml/badge.svg)](https://github.com/CorvusSoftware/CorvusCore/actions/workflows/ci.yml)
-[![Anthropic](https://img.shields.io/badge/Anthropic-Claude-D97757?logo=anthropic&logoColor=white)](https://www.anthropic.com/)
 [![Release](https://img.shields.io/github/v/release/CorvusSoftware/CorvusCore?label=Version)](https://github.com/CorvusSoftware/CorvusCore/releases)
 [![Licence AGPL-3.0](https://img.shields.io/badge/Licence-AGPL--3.0-663399?logo=gnu&logoColor=white)](LICENSE)
 
@@ -113,17 +112,6 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-## État et limites
-
-- **GB / GBC** : les 198 tests publics retenus passent. Des suites plus exigeantes (Mealybug Tearoom, SameSuite, gbmicrotest) échouent encore en partie.
-- **GBA** : expérimental. Les suites gba-tests et FuzzARM passent, mais le cœur n'a pas encore été essayé sur un large panel de jeux. Non émulés pour l'instant :
-  - le mode UART et l'adaptateur sans fil ;
-  - l'exception d'instruction indéfinie.
-- **Capteurs** : ceux des cartouches GBA suivent les mesures publiées par GBATEK, mais n'ont pas encore été essayés en jeu. Le sens des axes d'inclinaison (GBA et MBC7) et l'échelle du gyroscope restent à confirmer.
-- **RetroAchievements** : les cœurs Libretro exposent une copie de la mémoire du jeu, rafraîchie à chaque image, vérifiée avec le code de rcheevos qu'utilise RetroArch mais pas encore en jeu dans RetroArch. Sur Game Boy, les deux fenêtres de ROM suivent la banque choisie par le jeu et les registres d'E/S sont exposés ; restent hors carte la RAM du MBC7 et, pour le MBC2, les bits hauts que relit le CPU. Le détail est dans [docs/retroachievements.md](docs/retroachievements.md). Les codes de triche ne sont pas pris en charge. L'intégration de [RavenEmu Android](https://github.com/GhostPunishR/RavenEmu) est distincte.
-- **Câble link distant** : deux consoles seulement, prévu pour un réseau local. La console qui cadence un transfert attend un aller-retour réseau : un jeu GBA qui enchaîne les transferts peut ralentir. Essayé par des tests avec un faux réseau, pas encore entre deux appareils. Détails dans [docs/remote_link.md](docs/remote_link.md).
-- **États instantanés** : un état ne se recharge pas dans une version plus ancienne que celle qui l'a créé. Les changements de format sont listés dans le [journal des modifications](CHANGELOG.md).
-
 ## Versions
 
 Version actuelle : **0.9.0**. Chaque version est publiée sur la page des [releases](https://github.com/CorvusSoftware/CorvusCore/releases) avec les cœurs Libretro Linux. Ses évolutions sont détaillées dans le [journal des modifications](CHANGELOG.md).
@@ -140,6 +128,10 @@ Les contributions sont les bienvenues. Lisez le [guide de contribution](CONTRIBU
 
 ## Licence
 
-Projet maintenu par **CorvusSoftware** et développé à l'origine par **GhostPunishR**, sous licence [GNU AGPL-3.0](LICENSE). Le fichier `libretro.h` conserve sa licence MIT. Voir [NOTICE.md](NOTICE.md) pour les attributions.
+Projet maintenu par **CorvusSoftware** et développé à l'origine par **GhostPunishR**, sous licence [GNU AGPL-3.0](LICENSE).
+
+Le fichier `libretro.h` conserve sa licence MIT. Voir [NOTICE.md](NOTICE.md) pour les attributions.
 
 Aucune ROM ni aucun BIOS commercial n'est fourni. CorvusCore n'est affilié ni à Nintendo, ni à RetroArch, ni à RetroAchievements.
+
+© 2026 CorvusSoftware

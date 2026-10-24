@@ -51,16 +51,20 @@ Trois bibliothèques sont fournies par plateforme : `corvuscore_gb_libretro` (Ga
 
 Les options des cœurs Libretro sont disponibles en français, regroupées en catégories **Image**, **Commandes**, **Système** et **Cartouche** : palette verte ou Pocket pour CorvusGB, correction LCD sur CorvusGBC/CorvusGBA, **mélange d’images** (moyenne ou rémanence), autorisation facultative des directions opposées et **codes de triche** (Game Genie, GameShark, Codebreaker, Action Replay selon la console). Les options d’image s’appliquent sans redémarrer le jeu.
 
-Pour **CorvusGB** et **CorvusGBC**, les boot ROMs facultatives peuvent être chargées depuis le dossier système de RetroArch (`dmg_boot.bin`, `gb_bios.bin`, `cgb_boot.bin`, `gbc_bios.bin`, `agb_boot.bin`). CorvusGBC permet aussi de choisir le mode **Game Boy Advance** pour les jeux GBC. Les cartouches **MBC30** sont prises en charge.
+Pour **CorvusGB** et **CorvusGBC**, les boot ROMs facultatives peuvent être chargées depuis le dossier système de RetroArch (`dmg_boot.bin`, `gb_bios.bin`, `cgb_boot.bin`, `gbc_bios.bin`, `agb_boot.bin`). CorvusGBC permet aussi de choisir le mode **Game Boy Advance** pour les jeux GBC. Les cartouches **MBC30** sont prises en charge. Sans boot ROM, les jeux Game Boy lancés dans **CorvusGBC** utilisent désormais les palettes de compatibilité de la GBC, déterminées jeu par jeu (table de The Cutting Room Floor, [CC BY 3.0](NOTICE.md)). L'option **Couleurs des jeux Game Boy** permet aussi de choisir les gris ou les douze combinaisons de touches de la console.
 
-Les cœurs gèrent la vibration (MBC5 Rumble, Drill Dozer, WarioWare: Twisted!) et les capteurs des cartouches, pilotés au stick analogique gauche :
+**BIOS GBA facultatif.** Par défaut, CorvusCore émule lui-même les appels BIOS. L'option **BIOS** de CorvusGBA peut utiliser le vrai fichier `gba_bios.bin` (16 Kio), avec ou sans animation de démarrage. Le BIOS n'est pas fourni et les états de sauvegarde exigent le BIOS correspondant ; le format des états GBA passe à **17**.
+
+**Deux joueurs en câble link local.** Les cœurs déclarent le sous-système Libretro **Deux joueurs (câble link)**. RetroArch peut lancer deux ROMs de la même console avec leurs sauvegardes et manettes séparées, en affichant les deux écrans côte à côte. Les codes de triche, succès et capteurs de l'appareil concernent le joueur 1, et le son provient du joueur 1.
+
+Les cœurs gèrent la vibration (MBC5 Rumble, Drill Dozer, WarioWare: Twisted!) et les capteurs des cartouches, pilotés au stick analogique gauche **ou via les capteurs de l'appareil** si RetroArch les expose (option **Capteurs de l'appareil**) :
 
 | Capteur | Jeux | Commande |
 | --- | --- | --- |
 | Accéléromètre MBC7 | Kirby Tilt 'n' Tumble, Command Master | Stick gauche |
 | Inclinaison GBA | Yoshi Topsy-Turvy, Koro Koro Puzzle | Stick gauche |
 | Gyroscope GBA | WarioWare: Twisted! | Stick gauche, axe horizontal (à droite : sens horaire) |
-| Capteur solaire GBA | Boktai 1 à 3 | Option `corvuscore_gba_solar_light` |
+| Capteur solaire GBA | Boktai 1 à 3 | Option `corvuscore_gba_solar_light` : pourcentage ou capteur de luminosité |
 
 La sauvegarde et l'horloge d'un jeu GBA sont détectées automatiquement. La détection RTC couvre aussi les pilotes Pokémon/CFRU sans marqueur Seiko, à partir de leur identité interne et de références GPIO ([détails et limites](cores/gba/tests/rtc_compatibility.md)). Si la détection se trompe, deux options du cœur les imposent ; elles s'appliquent au chargement du jeu. La lumière du capteur solaire, elle, se règle à tout moment :
 
@@ -68,7 +72,7 @@ La sauvegarde et l'horloge d'un jeu GBA sont détectées automatiquement. La dé
 | --- | --- |
 | `corvuscore_gba_save_type` | `auto`, `sram`, `flash64`, `flash128`, `eeprom512`, `eeprom8k`, `none` |
 | `corvuscore_gba_rtc` | `auto`, `enabled`, `disabled` |
-| `corvuscore_gba_solar_light` | Pourcentage de plein soleil : `50` par défaut, de `0` à `100` par pas de 10 |
+| `corvuscore_gba_solar_light` | Pourcentage de plein soleil : `50` par défaut, de `0` à `100` par pas de 10, ou `sensor` pour le capteur de lumière (si disponible) |
 
 Les cœurs déclarent à RetroArch la mémoire que surveille RetroAchievements : les succès s'activent comme avec les autres cœurs, et RetroArch applique lui-même les règles du mode Hardcore. RetroAchievements n'a pas encore testé CorvusCore.
 
@@ -85,7 +89,7 @@ Les cœurs déclarent à RetroArch la mémoire que surveille RetroAchievements :
 Après `cmake --install`, utilisez le paquet CMake :
 
 ```cmake
-find_package(CorvusCore 0.13 REQUIRED)
+find_package(CorvusCore 0.14 REQUIRED)
 target_link_libraries(mon_app PRIVATE CorvusCore::corvuscore_c_api)  # ou CorvusCore::corvuscore en C++
 ```
 
@@ -97,7 +101,9 @@ L'API C couvre :
 - les capteurs des cartouches : lumière, rotation et inclinaison ;
 - le câble link entre consoles d'une même application (deux jeux sur un même appareil) ;
 - le câble link vers une console d'un autre appareil, l'application transportant les messages (voir [docs/remote_link.md](docs/remote_link.md)) ;
-- la lecture de la mémoire surveillée par RetroAchievements.
+- la lecture de la mémoire surveillée par RetroAchievements ;
+- la validation et l'application des codes de triche (`corvuscore_check_cheat`, `corvuscore_set_cheats`) ;
+- le modèle GBC d'une GBA (`CORVUSCORE_GBC_ON_GBA`), les palettes GBC (`corvuscore_set_gbc_colors`) et le BIOS GBA facultatif (`corvuscore_set_gba_bios`).
 
 Détails dans le [README du SDK](sdk/README.md).
 
@@ -122,7 +128,7 @@ ctest --test-dir build --output-on-failure
 
 ## Versions
 
-Version actuelle : **0.13.0**. Chaque version est publiée sur la page des [releases](https://github.com/CorvusSoftware/CorvusCore/releases) avec les cœurs Libretro pour Linux, Windows, macOS et Android. Ses évolutions sont détaillées dans le [journal des modifications](CHANGELOG.md).
+Version actuelle : **0.14.0**. Chaque version est publiée sur la page des [releases](https://github.com/CorvusSoftware/CorvusCore/releases) avec les cœurs Libretro pour Linux, Windows, macOS et Android. Ses évolutions sont détaillées dans le [journal des modifications](CHANGELOG.md).
 
 ## Contribuer
 

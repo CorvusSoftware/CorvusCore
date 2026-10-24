@@ -26,6 +26,7 @@
 
 struct corvuscore_bridge {
     std::unique_ptr<corvuscore::Core> core;
+    int system = -1;  // valeur de corvuscore_system donnée à corvuscore_create
     std::vector<std::int32_t> framebuffer;
     bool loaded = false;
     // État sérialisé par corvuscore_state_size : un frontend appelle presque
@@ -78,6 +79,15 @@ void require_gba(const corvuscore_bridge* handle) {
     if (handle->core->console() != corvuscore::Console::game_boy_advance) throw std::invalid_argument("Not a GBA handle");
 }
 
+// Console d'une valeur de corvuscore_system, pour décoder ses codes de triche.
+std::optional<corvuscore::Console> console_of(int system) noexcept {
+    switch (system) {
+    case CORVUSCORE_GB: case CORVUSCORE_GBC: case CORVUSCORE_GBC_ON_GBA: return corvuscore::Console::game_boy;
+    case CORVUSCORE_GBA: return corvuscore::Console::game_boy_advance;
+    default: return std::nullopt;
+    }
+}
+
 void require_loaded(const corvuscore_bridge* handle) {
     if (!handle || !handle->core || !handle->loaded)
         throw std::runtime_error("No ROM loaded");
@@ -123,10 +133,14 @@ corvuscore_bridge* corvuscore_create(int system) {
         case CORVUSCORE_GBA:
             handle->core = corvuscore::make_gba_core(std::nullopt);
             break;
+        case CORVUSCORE_GBC_ON_GBA:
+            handle->core = corvuscore::gb::make_core(corvuscore::gb::HardwareModel::agb);
+            break;
         default:
             throw std::invalid_argument("Invalid system");
         }
         handle->framebuffer.resize(handle->core->video_spec().pixel_count());
+        handle->system = system;
         result = handle.release();
     });
     return result;
@@ -300,6 +314,13 @@ int corvuscore_set_gba_rtc(corvuscore_bridge* handle, int rtc) {
                                                                          : std::optional<bool>{rtc == CORVUSCORE_GBA_RTC_ON});
     });
 }
+int corvuscore_set_gba_bios(corvuscore_bridge* handle, const uint8_t* bios, size_t size, int skip_intro) {
+    return attempt([&] {
+        require_gba(handle);
+        if (size && !bios) throw std::invalid_argument("Null GBA BIOS");
+        handle->core->set_gba_bios({bios, size}, skip_intro != 0);
+    });
+}
 int corvuscore_rumble_active(const corvuscore_bridge* handle) {
     return handle && handle->core && handle->loaded && handle->core->rumble_active() ? 1 : 0;
 }
@@ -447,6 +468,42 @@ int corvuscore_remote_link_service(corvuscore_remote_link* link) {
         if (!link->handle->loaded) return;
         machine_may_change(link->handle);
         link->handle->core->service_remote_link();
+    });
+}
+int corvuscore_set_gbc_colors(corvuscore_bridge* handle, int colors) {
+    if (!handle || !handle->core || (handle->system != CORVUSCORE_GBC && handle->system != CORVUSCORE_GBC_ON_GBA)) return 0;
+    // Les valeurs C suivent l'énumération C++.
+    static_assert(CORVUSCORE_GBC_COLORS_GRAY == static_cast<int>(corvuscore::GbcCompatibilityColors::grayscale));
+    static_assert(CORVUSCORE_GBC_COLORS_UP == static_cast<int>(corvuscore::GbcCompatibilityColors::up));
+    static_assert(CORVUSCORE_GBC_COLORS_B_RIGHT == static_cast<int>(corvuscore::GbcCompatibilityColors::b_right));
+    if (colors < CORVUSCORE_GBC_COLORS_AUTO || colors > CORVUSCORE_GBC_COLORS_B_RIGHT) return 0;
+    machine_may_change(handle);
+    handle->core->set_gbc_compatibility_colors(static_cast<corvuscore::GbcCompatibilityColors>(colors));
+    return 1;
+}
+int corvuscore_check_cheat(int system, const char* code) {
+    return attempt([&] {
+        const auto console = console_of(system);
+        if (!console) throw std::invalid_argument("Invalid system");
+        if (!code) throw std::invalid_argument("Null cheat code");
+        static_cast<void>(corvuscore::parse_cheat(*console, code));
+    });
+}
+int corvuscore_set_cheats(corvuscore_bridge* handle, const char* const* codes, size_t count) {
+    return attempt([&] {
+        if (!handle || !handle->core) throw std::invalid_argument("Null handle");
+        if (count > 0 && !codes) throw std::invalid_argument("Null cheat list");
+        std::vector<corvuscore::Cheat> cheats;
+        cheats.reserve(count);
+        for (size_t index = 0; index < count; ++index) {
+            if (!codes[index]) throw std::invalid_argument("Null cheat code");
+            try {
+                cheats.push_back(corvuscore::parse_cheat(handle->core->console(), codes[index]));
+            } catch (const corvuscore::CheatError& error) {
+                throw std::runtime_error("code de triche " + std::to_string(index + 1) + " : " + error.what());
+            }
+        }
+        handle->core->set_cheats(cheats);
     });
 }
 int corvuscore_link_wanted(const corvuscore_bridge* handle) {

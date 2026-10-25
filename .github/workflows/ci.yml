@@ -40,7 +40,9 @@ jobs:
         run: |
           for name in gb gbc gba; do
             test -f "build/libcorvus_${name}.so"
-            nm -D --defined-only "build/libcorvus_${name}.so" | grep -q ' corvus_get_api      - name: Install and consume the CMake package
+            nm -D --defined-only "build/libcorvus_${name}.so" | grep -q ' corvus_get_api$'
+          done
+      - name: Install and consume the CMake package
         run: |
           cmake --install build --prefix "$RUNNER_TEMP/corvuscore"
           cmake -S sdk/tests/package_consumer -B build/package_consumer \

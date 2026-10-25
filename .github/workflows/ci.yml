@@ -19,6 +19,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          submodules: recursive
       # Public GBA and GB/GBC test suites: pinned commits or releases, SHA-256
       # checked, never stored in the repository.
       - name: Fetch public GBA test ROMs
@@ -27,13 +29,19 @@ jobs:
         run: cores/gb/tests/fetch_test_roms.sh "$RUNNER_TEMP/gb-test-roms"
       - name: Configure CMake
         run: >
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCORVUSCORE_BUILD_CORVUSAPI=ON
           "-DCORVUSCORE_GBA_TEST_ROMS=$RUNNER_TEMP/gba-test-roms"
           "-DCORVUSCORE_GB_TEST_ROMS=$RUNNER_TEMP/gb-test-roms"
       - name: Build native engines and Libretro
         run: cmake --build build --parallel 2
       - name: Run all synthetic tests
         run: ctest --test-dir build --output-on-failure --parallel 2
+      - name: Verify CorvusAPI modules
+        run: |
+          for name in gb gbc gba; do
+            test -f "build/libcorvus_${name}.so"
+            nm -D --defined-only "build/libcorvus_${name}.so" | grep -q ' corvus_get_api$'
+          done
       - name: Install and consume the CMake package
         run: |
           cmake --install build --prefix "$RUNNER_TEMP/corvuscore"

@@ -13,11 +13,44 @@ if(PROJECT_IS_TOP_LEVEL AND NOT CORVUSCORE_MULTI_CONFIG AND NOT CMAKE_BUILD_TYPE
 endif()
 
 option(CORVUSCORE_BUILD_LIBRETRO "Build the three Libretro frontend adapters" ON)
+option(CORVUSCORE_BUILD_CORVUSAPI "Build CorvusAPI shared core modules" OFF)
 option(CORVUSCORE_INSTALL "Install the engines, the C API and the CMake package" ${PROJECT_IS_TOP_LEVEL})
 include(CTest)
 
+if(CORVUSCORE_BUILD_CORVUSAPI)
+    # All existing static engines are linked into the shared CorvusAPI modules.
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
 add_subdirectory(cores)
 add_subdirectory(sdk)
+
+
+# The public MIT C ABI is independent of CorvusCore's existing SDK.
+# Each core is its own shared module and exports corvus_get_api.
+if(CORVUSCORE_BUILD_CORVUSAPI)
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/CorvusAPI/include/corvus/api.h")
+        message(FATAL_ERROR "CorvusAPI submodule missing: git submodule update --init --recursive")
+    endif()
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    add_subdirectory(third_party/CorvusAPI)
+    foreach(system gb gbc gba)
+        if(system STREQUAL "gb")
+            set(system_id 0)
+        elseif(system STREQUAL "gbc")
+            set(system_id 1)
+        else()
+            set(system_id 2)
+        endif()
+        add_library(corvus_${system} SHARED sdk/src/corvus_api_adapter.cpp)
+        target_compile_definitions(corvus_${system} PRIVATE CORVUS_ADAPTER_SYSTEM=${system_id})
+        target_link_libraries(corvus_${system} PRIVATE corvuscore_c_api CorvusAPI::CorvusAPI)
+        set_target_properties(corvus_${system} PROPERTIES
+            CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN YES
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+        target_compile_options(corvus_${system} PRIVATE ${CORVUSCORE_WARNING_OPTIONS})
+    endforeach()
+endif()
 
 if(CORVUSCORE_BUILD_LIBRETRO)
     add_subdirectory(libretro)

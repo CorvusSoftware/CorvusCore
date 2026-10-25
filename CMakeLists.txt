@@ -17,6 +17,11 @@ option(CORVUSCORE_BUILD_CORVUSAPI "Build CorvusAPI shared core modules" OFF)
 option(CORVUSCORE_INSTALL "Install the engines, the C API and the CMake package" ${PROJECT_IS_TOP_LEVEL})
 include(CTest)
 
+if(CORVUSCORE_BUILD_CORVUSAPI)
+    # All existing static engines are linked into the shared CorvusAPI modules.
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
 add_subdirectory(cores)
 add_subdirectory(sdk)
 

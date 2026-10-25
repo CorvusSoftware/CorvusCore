@@ -242,7 +242,10 @@ corvuscore_remote_link* corvuscore_remote_link_create(corvuscore_bridge* handle,
  * handle runs a frame: unplug first, a waiting handle then returns at once. */
 void corvuscore_remote_link_destroy(corvuscore_remote_link* link);
 /* A message from the other device. Returns 0 when it is malformed: it is
- * then ignored. */
+ * then ignored. Also 0 when the other device sends more than this console
+ * reads (thousands of messages waiting): it is then no longer served, the
+ * state turns CORVUSCORE_REMOTE_INCOMPATIBLE until the cable is pulled out and
+ * plugged in again. */
 int corvuscore_remote_link_receive(corvuscore_remote_link* link, const uint8_t* message, size_t size);
 /* Plugs the cable in (1) or pulls it out (0). Plugged in, the console
  * introduces itself to the other one; the cable carries transfers once the

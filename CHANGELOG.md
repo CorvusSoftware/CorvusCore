@@ -4,6 +4,18 @@ Ce fichier recense les évolutions notables de CorvusCore (anciennement RavenCor
 
 ## Non publié
 
+Correctifs portés depuis [RavenCore](https://github.com/GhostPunishR/RavenCore), commit [`212a777`](https://github.com/GhostPunishR/RavenCore/commit/212a777ca4343a30557cbf3b1876633fab29c00f) du 25 octobre 2026, en conservant l'identité **CorvusCore**.
+
+### Corrigé
+
+- **Câble distant** : la file des messages reçus est bornée à 4 096. Un partenaire qui envoie plus que la console ne lit, par exemple pendant une pause de l'émulation, ne remplit plus la mémoire : il n'est plus servi, `corvuscore_remote_link_receive()` renvoie 0 et l'état passe à `CORVUSCORE_REMOTE_INCOMPATIBLE` jusqu'au prochain branchement. Un transfert en attente finit comme sans câble.
+- **GBA, MidiKey2Freq** : une touche hors de la plage MIDI ne convertit plus une valeur infinie ou NaN en entier (comportement indéfini, relevé par UBSan). Le résultat est borné à 0-0xFFFFFFFF.
+- **GBA, CpuFastSet** : la copie et le remplissage se font par blocs de huit mots, le compte arrondi au multiple de 8 supérieur, comme le BIOS (GBATEK). Un compte de 1 copiait un seul mot.
+- **GBA, EEPROM et ROM de 32 Mio** : au-delà de 16 Mio de ROM, seuls les 256 derniers octets de 0x0D000000-0x0DFFFFFF vont à l'EEPROM (GBATEK) ; le reste lit la ROM, au lieu de bits d'EEPROM.
+- **Game Boy, interruption joypad** : sélectionner dans P1 une rangée où une touche est déjà tenue abaisse sa ligne et demande l'interruption, comme un appui (Pan Docs). Un appui dont la ligne était déjà basse, par l'autre rangée, n'en demande plus.
+- **Game Boy, STOP** : seul un appui pendant l'arrêt le termine. Un appui antérieur, déjà relâché, réveillait la console aussitôt.
+- **Publication** : lancée à la main avec un tag qui existe déjà, elle compile et publie le commit de ce tag, et non la tête de la branche choisie. Un seul commit est résolu pour toute la publication.
+
 ### Modifié
 
 - Renommage du projet en **CorvusCore** sous **CorvusSoftware**, avec namespaces, API C, cibles CMake, variables de build, sorties Libretro, chemins d'en-tête et documentation cohérents.

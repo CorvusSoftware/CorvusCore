@@ -165,13 +165,11 @@ ctest --test-dir build-rtc-sanitize \
   -R '^(gba_raven_.*|gba_save_state|corvuscore_c_api)$' --output-on-failure
 ```
 
-Résultats obtenus sur la branche de correction issue de `main` : **245/245 tests**
-au total, **12/12 suites** GBA/API et ancien adaptateur (validation historique) sous ASan/UBSan, consommateur du paquet
-CMake fraîchement installé réussi. La même correction avait aussi passé les
-260 tests du contexte de développement contenant les jalons NDS précédents ;
-ces jalons ne font pas partie de cette branche de correction.
-Les sources GB/GBC, NDS, `GbaCore::current_epoch` et les modules frontend de
-production ne nécessitent aucune modification pour cette correction.
+Les chiffres de validation de la correction initiale concernaient une branche
+historique et incluaient des tests d'une intégration désormais supprimée.
+**Ils ne constituent pas un résultat de CI du commit actuel.** Pour vérifier
+l'implémentation présente, exécuter les commandes ci-dessus et consulter la CI
+récente du dépôt. Aucun composant d'une autre console n'est impliqué ici.
 
 **Validation réelle restante :** charger la ROM Unbound exacte qui pose problème,
 vérifier ses indices binaires, constater l'absence de l'avertissement RTC,

@@ -28,7 +28,7 @@ add_subdirectory(sdk)
 # The public MIT C ABI is independent of CorvusCore's existing SDK.
 # Each core is its own shared module and exports corvus_get_api.
 if(CORVUSCORE_BUILD_CORVUSAPI)
-    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/CorvusAPI/include/corvus/api.h")
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/CorvusAPI/include/corvusapi.h")
         message(FATAL_ERROR "CorvusAPI submodule missing: git submodule update --init --recursive")
     endif()
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)

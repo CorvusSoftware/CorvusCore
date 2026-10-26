@@ -2,6 +2,8 @@
 
 Copyright (C) 2026 CorvusSoftware. SPDX-License-Identifier: AGPL-3.0-only.
 
+En-tête public : `#include <corvusapi.h>` (API de base et extension optionnelle).
+
 Option CMake : `-DCORVUSCORE_BUILD_CORVUSAPI=ON`. Initialiser le sous-module
 `third_party/CorvusAPI` avant compilation. Trois modules sont produits :
 `libcorvus_gb.so`, `libcorvus_gbc.so` et `libcorvus_gba.so` (selon plateforme).
@@ -18,7 +20,7 @@ reste sous sa licence AGPL-3.0-only. Seule l'interface CorvusAPI est sous MIT.
 ## Extension mémoire RetroAchievements
 
 Depuis 0.14.1, chaque module expose aussi `corvus_get_achievements_api`, décrit
-par le contrat public MIT `corvus/achievements.h` version 1. Il fournit une copie
+par le contrat public MIT `achievements.h` version 1. Il fournit une copie
 en lecture seule de l'espace mémoire RetroAchievements, avec les identifiants
 Game Boy (4), Game Boy Color (6) et Game Boy Advance (5). Le handle est exactement celui
 retourné par `corvus_core_api.create` : aucun handle SDK privé ne traverse cette ABI.

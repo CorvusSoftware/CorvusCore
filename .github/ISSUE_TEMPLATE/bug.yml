@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 name: "Bug technique"
-description: "Signaler une erreur reproductible dans les moteurs, Libretro ou la compilation."
+description: "Signaler une erreur reproductible dans les moteurs, CorvusAPI ou la compilation."
 title: "[Bug] "
 body:
   - type: dropdown

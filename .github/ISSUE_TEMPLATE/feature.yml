@@ -13,7 +13,7 @@ body:
       options:
         - "GB / GBC"
         - "GBA"
-        - "Libretro"
+        - "CorvusAPI"
         - "SDK / API C++"
         - "Tests / documentation"
         - "Autre"

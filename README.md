@@ -1,149 +1,57 @@
 # CorvusCore
 
-> **CorvusSoftware** bibliothèque de cœurs d'émulation C++20, distribuée sous **GNU AGPL-3.0-only**. Projet issu de RavenCore, développé par GhostPunishR. Cette nouvelle identité utilise des namespaces, noms d'API, cibles CMake et binaires `corvuscore` et n'est pas compatible au niveau des noms d'API avec les anciennes intégrations `ravenemu`.
-
+> Moteurs d'émulation GB, GBC et GBA en C++20 pour l'écosystème CorvusSoftware. Projet issu de RavenCore créé par GhostPunishR, sous **AGPL-3.0-only**.
 
 [![CI](https://github.com/CorvusSoftware/CorvusCore/actions/workflows/ci.yml/badge.svg)](https://github.com/CorvusSoftware/CorvusCore/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/CorvusSoftware/CorvusCore?label=Version)](https://github.com/CorvusSoftware/CorvusCore/releases)
-[![Licence AGPL-3.0](https://img.shields.io/badge/Licence-AGPL--3.0-663399?logo=gnu&logoColor=white)](LICENSE)
 
-Moteurs d'émulation **Game Boy, Game Boy Color et Game Boy Advance** écrits en **C++20**, sans cœur tiers.
+CorvusCore fournit les trois moteurs officiels **CorvusGB**, **CorvusGBC** et **CorvusGBA** (expérimental). Les frontends, notamment [CorvusRetro](https://github.com/CorvusSoftware/CorvusRetro), communiquent avec eux au moyen de [CorvusAPI](https://github.com/CorvusSoftware/CorvusAPI), une ABI C indépendante d'Android.
 
-Ce dépôt permet de les utiliser hors de l'application Android : dans tout frontend compatible avec **Libretro**, ou dans votre propre projet via une **API C** ou **C++**.
+## Compiler et tester
 
-| Cœur | Console | État |
-| --- | --- | --- |
-| **CorvusGB** | Game Boy | Avancé |
-| **CorvusGBC** | Game Boy Color | Avancé |
-| **CorvusGBA** | Game Boy Advance | Expérimental |
+Prérequis : CMake 3.22.1+, un compilateur C++20 et Git.
 
-**Sommaire :** [Compiler](#compiler) · [Libretro](#utiliser-avec-libretro) · [Intégrer](#intégrer-dans-un-projet) · [Tests](#tests) · [Limites](#état-et-limites) · [Versions](#versions) · [Contribuer](#contribuer) · [Licence](#licence)
-
-## Compiler
-
-Prérequis : **CMake 3.22.1+** et un compilateur **C++20**.
-
-```bash
-git clone https://github.com/CorvusSoftware/CorvusCore.git
+```sh
+git clone --recurse-submodules https://github.com/CorvusSoftware/CorvusCore.git
 cd CorvusCore
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCORVUSCORE_BUILD_CORVUSAPI=ON
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-Pour ne compiler que les moteurs, ajoutez `-DCORVUSCORE_BUILD_LIBRETRO=OFF -DBUILD_TESTING=OFF`.
+Par défaut, `CORVUSCORE_BUILD_CORVUSAPI=OFF` construit les moteurs et le SDK. Avec `ON`, trois modules natifs sont également construits : `corvus_gb`, `corvus_gbc` et `corvus_gba`. Chacun exporte `corvus_get_api`.
 
-## Utiliser avec Libretro
+## Interfaces
 
-1. Téléchargez l'archive adaptée à votre plateforme depuis les [releases](https://github.com/CorvusSoftware/CorvusCore/releases), ou les artefacts d'une [exécution CI](https://github.com/CorvusSoftware/CorvusCore/actions/workflows/ci.yml) pour la version de développement.
-2. Sur ordinateur, placez les fichiers `cores/*_libretro.*` et `info/*.info` dans les répertoires gérés par votre frontend Libretro. Sur Android, utilisez la méthode d'installation de cœurs prévue par votre frontend pour les fichiers `*_libretro_android.so`.
-3. Chargez le cœur depuis le gestionnaire de cœurs de votre frontend.
-
-| Plateforme | Binaires Libretro | Archive de release |
-| --- | --- | --- |
-| Linux x86-64 | `.so` | `corvuscore-libretro-vX.Y.Z-linux-x86_64.tar.gz` |
-| Windows x86-64 | `.dll` | `corvuscore-libretro-vX.Y.Z-windows-x86_64.zip` |
-| macOS 11+ (Apple Silicon et Intel) | `.dylib` | `corvuscore-libretro-vX.Y.Z-macos-universal.zip` |
-| Android ARM64 | `*_libretro_android.so` | `corvuscore-libretro-vX.Y.Z-android-arm64-v8a.zip` |
-| Android ARMv7 | `*_libretro_android.so` | `corvuscore-libretro-vX.Y.Z-android-armeabi-v7a.zip` |
-
-Trois bibliothèques sont fournies par plateforme : `corvuscore_gb_libretro` (Game Boy), `corvuscore_gbc_libretro` (Game Boy Color) et `corvuscore_gba_libretro` (Game Boy Advance). Utilisez un frontend Libretro **64 bits** avec les binaires Windows x86-64 ; les `.so` Linux ne fonctionnent pas sous Windows. Sur Android, l'installation de cœurs personnalisés dépend du frontend et des permissions Android.
-
-Les options des cœurs Libretro sont disponibles en français, regroupées en catégories **Image**, **Commandes**, **Système** et **Cartouche** : palette verte ou Pocket pour CorvusGB, correction LCD sur CorvusGBC/CorvusGBA, **mélange d’images** (moyenne ou rémanence), autorisation facultative des directions opposées et **codes de triche** (Game Genie, GameShark, Codebreaker, Action Replay selon la console). Les options d’image s’appliquent sans redémarrer le jeu.
-
-Pour **CorvusGB** et **CorvusGBC**, les boot ROMs facultatives peuvent être chargées depuis le répertoire système fourni par le frontend Libretro (`dmg_boot.bin`, `gb_bios.bin`, `cgb_boot.bin`, `gbc_bios.bin`, `agb_boot.bin`). CorvusGBC permet aussi de choisir le mode **Game Boy Advance** pour les jeux GBC. Les cartouches **MBC30** sont prises en charge. Sans boot ROM, les jeux Game Boy lancés dans **CorvusGBC** utilisent désormais les palettes de compatibilité de la GBC, déterminées jeu par jeu (table de The Cutting Room Floor, [CC BY 3.0](NOTICE.md)). L'option **Couleurs des jeux Game Boy** permet aussi de choisir les gris ou les douze combinaisons de touches de la console.
-
-**BIOS GBA facultatif.** Par défaut, CorvusCore émule lui-même les appels BIOS. L'option **BIOS** de CorvusGBA peut utiliser le vrai fichier `gba_bios.bin` (16 Kio), avec ou sans animation de démarrage. Le BIOS n'est pas fourni et les états de sauvegarde exigent le BIOS correspondant ; le format des états GBA passe à **17**.
-
-**Deux joueurs en câble link local.** Les cœurs déclarent le sous-système Libretro **Deux joueurs (câble link)**. Un frontend Libretro prenant en charge ce sous-système peut lancer deux ROMs de la même console avec leurs sauvegardes et manettes séparées, en affichant les deux écrans côte à côte. Les codes de triche, succès et capteurs de l'appareil concernent le joueur 1, et le son provient du joueur 1.
-
-Les cœurs gèrent la vibration (MBC5 Rumble, Drill Dozer, WarioWare: Twisted!) et les capteurs des cartouches, pilotés au stick analogique gauche **ou via les capteurs de l'appareil** si le frontend les expose (option **Capteurs de l'appareil**) :
-
-| Capteur | Jeux | Commande |
-| --- | --- | --- |
-| Accéléromètre MBC7 | Kirby Tilt 'n' Tumble, Command Master | Stick gauche |
-| Inclinaison GBA | Yoshi Topsy-Turvy, Koro Koro Puzzle | Stick gauche |
-| Gyroscope GBA | WarioWare: Twisted! | Stick gauche, axe horizontal (à droite : sens horaire) |
-| Capteur solaire GBA | Boktai 1 à 3 | Option `corvuscore_gba_solar_light` : pourcentage ou capteur de luminosité |
-
-La sauvegarde et l'horloge d'un jeu GBA sont détectées automatiquement. La détection RTC couvre aussi les pilotes Pokémon/CFRU sans marqueur Seiko, à partir de leur identité interne et de références GPIO ([détails et limites](cores/gba/tests/rtc_compatibility.md)). Si la détection se trompe, deux options du cœur les imposent ; elles s'appliquent au chargement du jeu. La lumière du capteur solaire, elle, se règle à tout moment :
-
-| Option | Valeurs |
+| Interface | Documentation |
 | --- | --- |
-| `corvuscore_gba_save_type` | `auto`, `sram`, `flash64`, `flash128`, `eeprom512`, `eeprom8k`, `none` |
-| `corvuscore_gba_rtc` | `auto`, `enabled`, `disabled` |
-| `corvuscore_gba_solar_light` | Pourcentage de plein soleil : `50` par défaut, de `0` à `100` par pas de 10, ou `sensor` pour le capteur de lumière (si disponible) |
+| CorvusAPI (ABI C pour les frontends) | [Spécification publique](https://github.com/CorvusSoftware/CorvusAPI) |
+| SDK C de CorvusCore | [`bridge.h`](sdk/include/corvuscore/bridge.h) |
+| SDK C++ | [`sdk.hpp`](sdk/include/corvuscore/sdk.hpp) |
+| Accès C++ aux moteurs | [`core.hpp`](cores/common/include/corvuscore/core.hpp) |
 
-Les cœurs Libretro exposent au frontend la mémoire surveillée par RetroAchievements ; la prise en charge des succès et du mode Hardcore dépend du frontend. RetroAchievements n'a pas encore testé CorvusCore.
+Installer le SDK et utiliser son paquet CMake :
 
-> Les cœurs sont distribués par les releases CorvusCore. Les archives de release multi-plateformes sont construites par le workflow `.github/workflows/release.yml` ; leurs équivalents de développement sont les artefacts de `.github/workflows/ci.yml`.
-
-## Intégrer dans un projet
-
-| Interface | En-tête | Usage |
-| --- | --- | --- |
-| C++ | [`core.hpp`](cores/common/include/corvuscore/core.hpp) | Accès direct aux moteurs |
-| SDK C++ | [`sdk.hpp`](sdk/include/corvuscore/sdk.hpp) | Fabrique simplifiée |
-| C | [`bridge.h`](sdk/include/corvuscore/bridge.h) | Frontends non C++ |
-
-Après `cmake --install`, utilisez le paquet CMake :
+```sh
+cmake --install build --prefix /chemin/corvuscore
+```
 
 ```cmake
 find_package(CorvusCore 0.14 REQUIRED)
-target_link_libraries(mon_app PRIVATE CorvusCore::corvuscore_c_api)  # ou CorvusCore::corvuscore en C++
+target_link_libraries(mon_app PRIVATE CorvusCore::corvuscore_c_api)
 ```
 
-L'API C couvre :
+Le SDK prend en charge la vidéo, l'audio, les entrées, la batterie, les états instantanés, les codes de triche, les capteurs, les vibrations, le câble link local/distant et la lecture mémoire pour RetroAchievements. Les capacités exposées via CorvusAPI dépendent de son contrat public : le câble link n'y est pas encore disponible.
 
-- le chargement de ROM, l'image, l'audio et les boutons ;
-- les sauvegardes batterie et les états instantanés ;
-- la vibration, et le type de sauvegarde et l'horloge d'un jeu GBA ;
-- les capteurs des cartouches : lumière, rotation et inclinaison ;
-- le câble link entre consoles d'une même application (deux jeux sur un même appareil) ;
-- le câble link vers une console d'un autre appareil, l'application transportant les messages (voir [docs/remote_link.md](docs/remote_link.md)) ;
-- la lecture de la mémoire surveillée par RetroAchievements ;
-- la validation et l'application des codes de triche (`corvuscore_check_cheat`, `corvuscore_set_cheats`) ;
-- le modèle GBC d'une GBA (`CORVUSCORE_GBC_ON_GBA`), les palettes GBC (`corvuscore_set_gbc_colors`) et le BIOS GBA facultatif (`corvuscore_set_gba_bios`).
+Voir [les modules CorvusAPI](docs/corvusapi.md), le [SDK](sdk/README.md), les [tests GB/GBC](cores/gb/tests/README.md) et les [tests GBA](cores/gba/tests/README.md).
 
-Détails dans le [README du SDK](sdk/README.md).
+## Tests, versions et licence
 
-## Tests
+La CI exécute les tests des moteurs, des modules CorvusAPI et des suites de conformité publiques (Mooneye, Blargg, acid2, gba-tests et FuzzARM). Les ROMs de test publiques sont téléchargées séparément et vérifiées par SHA-256.
 
-Les tests de base n'utilisent aucune ROM. La CI exécute en plus des suites de test publiques, téléchargées à la volée et vérifiées par SHA-256. Aucune ROM n'est stockée dans le dépôt.
+Version du code : **0.14.1**. Les anciennes [releases](https://github.com/CorvusSoftware/CorvusCore/releases) restent accessibles. Les prochaines archives concernent le SDK natif et les modules CorvusAPI. Voir le [CHANGELOG](CHANGELOG.md) et le [guide de contribution](CONTRIBUTING.md).
 
-| Console | Suites | Documentation |
-| --- | --- | --- |
-| GB / GBC | Mooneye Test Suite, Blargg, dmg-acid2, cgb-acid2 (200 tests) | [Tests GB/GBC](cores/gb/tests/README.md) |
-| GBA | jsmolka/gba-tests, FuzzARM | [Tests GBA](cores/gba/tests/README.md) |
+CorvusCore reste sous [AGPL-3.0-only](LICENSE). La spécification CorvusAPI est sous MIT. Les droits antérieurs et attributions figurent dans [NOTICE.md](NOTICE.md).
 
-Pour les lancer en local :
+Aucune ROM ni aucun BIOS commercial n'est fourni. CorvusCore n'est affilié ni à Nintendo ni à RetroAchievements.
 
-```bash
-cores/gb/tests/fetch_test_roms.sh build/gb-test-roms
-cores/gba/tests/fetch_test_roms.sh build/gba-test-roms
-cmake -S . -B build -DCORVUSCORE_GB_TEST_ROMS=build/gb-test-roms -DCORVUSCORE_GBA_TEST_ROMS=build/gba-test-roms
-cmake --build build --parallel
-ctest --test-dir build --output-on-failure
-```
-
-## Versions
-
-Version du code : **0.14.1**. Les versions publiées sont disponibles sur la page des [releases](https://github.com/CorvusSoftware/CorvusCore/releases) avec les cœurs Libretro pour Linux, Windows, macOS et Android. Ses évolutions sont détaillées dans le [journal des modifications](CHANGELOG.md).
-
-## Contribuer
-
-Les contributions sont les bienvenues. Lisez le [guide de contribution](CONTRIBUTING.md), qui couvre l'organisation du code, les règles et les pull requests, ainsi que le [code de conduite](CODE_OF_CONDUCT.md). L'essentiel :
-
-- une correction matérielle s'accompagne d'un test de régression ;
-- aucun code repris d'un autre émulateur, aucune ROM ni aucun BIOS ;
-- tout changement notable va dans la section « Non publié » du [journal](CHANGELOG.md).
-
-## Licence
-
-Projet maintenu par **CorvusSoftware** et développé à l'origine par **GhostPunishR**, sous licence [GNU AGPL-3.0](LICENSE).
-
-Le fichier `libretro.h` conserve sa licence MIT. Voir [NOTICE.md](NOTICE.md) pour les attributions.
-
-Aucune ROM ni aucun BIOS commercial n'est fourni. CorvusCore n'est affilié ni à Nintendo, ni à RetroAchievements.
-
-© 2026 CorvusSoftware
+© 2026 CorvusSoftware.

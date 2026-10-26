@@ -1,12 +1,10 @@
 # Mémoire RetroAchievements
 
-Les succès lisent la mémoire du jeu aux adresses que fixe rcheevos pour chaque console. CorvusCore la rend par `read_achievement_memory()` (API C : `corvuscore_read_achievement_memory()`), que RavenEmu utilise directement. Les cœurs Libretro en déclarent une copie au frontend Libretro (`RETRO_ENVIRONMENT_SET_MEMORY_MAPS`), dans la même disposition.
+Les succès lisent la mémoire du jeu aux adresses que fixe rcheevos pour chaque console. CorvusCore la rend par `read_achievement_memory()` (API C : `corvuscore_read_achievement_memory()`), que RavenEmu utilise directement. Les modules CorvusAPI exposent aussi cet espace via leur extension de lecture mémoire.
 
-## Copie Libretro
+## Lecture mémoire
 
-Un frontend peut conserver des pointeurs pendant toute la partie, alors que CorvusCore recrée sa machine à chaque reset et à chaque chargement d'état. Le cœur expose donc une copie de l'espace, à adresse fixe, rafraîchie après chaque image (quand les succès sont évalués), après un reset et après un chargement d'état. Une écriture du frontend dans cette copie n'atteint pas le jeu : les codes de triche ne sont pas pris en charge.
-
-Chaque région est découpée en descripteurs dont la longueur est une puissance de deux et le départ aligné sur elle, comme l'exige `libretro.h` sans masque `select`. Une région absente du jeu (pas de RAM de cartouche, Game Boy sans les banques de la Game Boy Color) n'a pas de descripteur : aucune zone n'est remplie de zéros à la place de données.
+Les moteurs fournissent une lecture de la mémoire sans avancer l'émulation. Le frontend traite les succès indépendamment.
 
 ## Game Boy et Game Boy Color
 
@@ -50,14 +48,7 @@ Limites :
 - La puce de sauvegarde est exposée telle qu'elle est stockée : SRAM 32 Kio sans miroir, Flash 64 Kio, EEPROM 512 octets ou 8 Kio. D'une Flash de 128 Kio, seule la banque 0 est visible, quelle que soit la banque choisie par le jeu.
 - Coût : 24 µs par image sur un PC (0,7 % d'une image de Pokémon Émeraude).
 
+
 ## Vérification
 
-- `gb_corvus_core` :
-  - bornes de chaque région, et lecture par blocs égale aux lectures d'un octet, y compris à cheval sur deux régions ;
-  - registres d'E/S égaux à ce qu'une ROM de test en recopie par le CPU ;
-  - banque paginée choisie par un MBC5, première fenêtre commutée par un MBC1 en mode 1.
-- `gb_cartridge_mbc` : pour chaque contrôleur et chaque banque choisie, la copie d'une fenêtre est, octet pour octet, la lecture du CPU.
-- `libretro_smoke_gb`, `libretro_smoke_gbc` et `libretro_smoke_gba` :
-  - carte déclarée aux adresses de la console, en descripteurs conformes aux contraintes Libretro ;
-  - copie qui suit chaque image, un changement de banque, un reset et un chargement d'état.
-- Vérifié en local avec `rc_libretro`, le code de rcheevos qui relie un cœur Libretro aux succès dans un frontend Libretro, compilé hors du dépôt. Pas encore validé en jeu dans un frontend Libretro, ni testé par RetroAchievements.
+Les tests natifs des moteurs valident les espaces mémoire. Le test `corvuscore_achievements_api` valide l'extension des trois modules CorvusAPI.

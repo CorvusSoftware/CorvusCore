@@ -21,6 +21,17 @@ Correctifs portés depuis [RavenCore](https://github.com/GhostPunishR/RavenCore)
 - Renommage du projet en **CorvusCore** sous **CorvusSoftware**, avec namespaces, API C, cibles CMake, variables de build, sorties Libretro, chemins d'en-tête et documentation cohérents.
 - **Rupture de compatibilité des noms d'API :** les intégrations externes utilisant `ravenemu` doivent migrer vers `corvuscore`. Historique antérieur préservé ci-dessous.
 
+## 0.14.1 - 2026-10-26
+
+### Ajouté
+
+- Les modules CorvusAPI exposent l'extension optionnelle `corvus_get_achievements_api`
+  version1 pour lire l'espace mémoire RetroAchievements de GB, GBC et GBA.
+- Les lectures utilisent le même handle que l'API de base, sans avancer l'émulation
+  ni modifier la mémoire. Une zone absente renvoie une lecture courte.
+- Les tests chargent les trois vrais modules et vérifient la négociation, les
+  limites d'adresses, les buffers invalides et la compatibilité de l'ABI0 inchangée.
+
 ## 0.14.0 - 2026-10-24
 
 Portage des évolutions de [RavenCore](https://github.com/GhostPunishR/RavenCore) jusqu'au commit [`15675cc`](https://github.com/GhostPunishR/RavenCore/commit/15675cc3af4f9b07f2e10cc5a7ca6234ea1c77cc), adaptées à **CorvusCore**, ses API et ses cœurs Libretro.

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 cmake_minimum_required(VERSION 3.22.1)
-project(CorvusCore VERSION 0.14.0 LANGUAGES CXX)
+project(CorvusCore VERSION 0.14.1 LANGUAGES CXX)
 
 # An unoptimized emulator is unusable: default to Release when this repository
 # is the main project and no build type was requested.
@@ -50,6 +50,17 @@ if(CORVUSCORE_BUILD_CORVUSAPI)
             LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
         target_compile_options(corvus_${system} PRIVATE ${CORVUSCORE_WARNING_OPTIONS})
     endforeach()
+    if(BUILD_TESTING AND UNIX)
+        add_executable(corvuscore_achievements_api_tests sdk/tests/corvus_api_achievements_test.cpp)
+        target_compile_features(corvuscore_achievements_api_tests PRIVATE cxx_std_20)
+        target_compile_definitions(corvuscore_achievements_api_tests PRIVATE CORVUSCORE_VERSION="${PROJECT_VERSION}")
+        target_link_libraries(corvuscore_achievements_api_tests PRIVATE CorvusAPI::CorvusAPI ${CMAKE_DL_LIBS})
+        target_include_directories(corvuscore_achievements_api_tests PRIVATE cores/common/tests/support)
+        target_compile_options(corvuscore_achievements_api_tests PRIVATE ${CORVUSCORE_WARNING_OPTIONS})
+        add_dependencies(corvuscore_achievements_api_tests corvus_gb corvus_gbc corvus_gba)
+        add_test(NAME corvuscore_achievements_api COMMAND corvuscore_achievements_api_tests
+            "$<TARGET_FILE:corvus_gb>" "$<TARGET_FILE:corvus_gbc>" "$<TARGET_FILE:corvus_gba>")
+    endif()
 endif()
 
 if(CORVUSCORE_BUILD_LIBRETRO)

@@ -41,6 +41,7 @@ jobs:
           for name in gb gbc gba; do
             test -f "build/libcorvus_${name}.so"
             nm -D --defined-only "build/libcorvus_${name}.so" | grep -q ' corvus_get_api$'
+            nm -D --defined-only "build/libcorvus_${name}.so" | grep -q ' corvus_get_achievements_api$'
           done
       - name: Install and consume the CMake package
         run: |

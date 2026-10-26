@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 #include <corvus/api.h>
+#include <corvus/achievements.h>
 #include <corvuscore/bridge.h>
 
 #include <array>
@@ -165,6 +166,16 @@ int battery_acknowledge(void* core, uint64_t generation) {
     return (instance && instance->loaded)
                ? corvuscore_acknowledge_battery(instance->bridge, generation) : 0;
 }
+size_t read_achievement_memory(void* core, uint32_t address, uint8_t* output,
+                                size_t capacity) {
+    const auto* instance = static_cast<const Instance*>(core);
+    if (!instance || !instance->loaded || !output || !capacity) return 0;
+    const uint64_t remaining = (uint64_t{1} << 32) - address;
+    if (static_cast<uint64_t>(capacity) > remaining)
+        capacity = static_cast<size_t>(remaining);
+    return corvuscore_read_achievement_memory(instance->bridge, address, output, capacity);
+}
+
 }  // namespace
 
 extern "C" CORVUS_API_EXPORT int corvus_get_api(uint32_t requested_version,
@@ -175,5 +186,17 @@ extern "C" CORVUS_API_EXPORT int corvus_get_api(uint32_t requested_version,
             load_game, unload_game, get_av_info, set_button, run_frame,
             reset, last_error, serialize_size, serialize, unserialize,
             battery_size, battery_dirty, battery_copy, battery_acknowledge};
+    return 1;
+}
+
+extern "C" CORVUS_API_EXPORT int corvus_get_achievements_api(
+    uint32_t requested_version, corvus_achievements_api* out) {
+    if (!out || requested_version != CORVUS_ACHIEVEMENTS_API_VERSION ||
+        out->struct_size < sizeof(corvus_achievements_api)) return 0;
+    constexpr uint32_t consoles[] = {CORVUS_ACHIEVEMENT_GAME_BOY,
+                                     CORVUS_ACHIEVEMENT_GAME_BOY_COLOR,
+                                     CORVUS_ACHIEVEMENT_GAME_BOY_ADVANCE};
+    *out = {sizeof(corvus_achievements_api), CORVUS_ACHIEVEMENTS_API_VERSION,
+            consoles[CORVUS_ADAPTER_SYSTEM], read_achievement_memory};
     return 1;
 }

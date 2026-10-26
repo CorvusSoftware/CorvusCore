@@ -1,4 +1,4 @@
-# Instructions de développement — CorvusCore
+# Instructions de développement - CorvusCore
 
 Ce fichier s'applique à l'ensemble du dépôt. Avant toute modification, lire le README, le guide de contribution et les documents de la partie concernée. Préférer l'état courant des sources et de CMake aux exemples anciens du journal des versions.
 

@@ -221,7 +221,7 @@ std::uint32_t pixel_after(std::vector<std::uint8_t>& rom, unsigned frames) {
     return first_pixel;
 }
 // Sans masque select, chaque descripteur a une longueur en puissance de deux
-// et un départ aligné sur elle, sinon RetroArch rejette la carte.
+// et un départ aligné sur elle pour respecter les contraintes Libretro.
 bool memory_map_valid() {
     for (const auto& descriptor : memory_map)
         if (descriptor.select != 0 || descriptor.len == 0 || (descriptor.len & (descriptor.len - 1)) != 0 ||
@@ -346,7 +346,7 @@ int main() {
     }
     // Carte mémoire de RetroAchievements : régions aux adresses de la console.
     if (!memory_map_valid()) {
-        std::cerr << "Memory descriptor RetroArch would reject\n";
+        std::cerr << "Memory descriptor violates Libretro constraints\n";
         return 1;
     }
 #if defined(CORVUSCORE_LIBRETRO_GBA)

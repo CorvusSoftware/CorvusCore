@@ -15,6 +15,6 @@
 - **Palettes de compatibilité de la GBC** : les tables de `cores/gb/src/ppu/compatibility_palettes.hpp` reprennent les données de [The Cutting Room Floor, « Notes:Game Boy Color Bootstrap ROM »](https://tcrf.net/Notes:Game_Boy_Color_Bootstrap_ROM) (révision 2183057), sous licence [Creative Commons Attribution 3.0 Unported](https://creativecommons.org/licenses/by/3.0/). Modification : couleurs converties du RGB 24 bits au RGB555 de la console. Le choix des palettes selon le titre suit Pan Docs, « Compatibility palettes ». Attribution maintenue lors du portage depuis RavenCore.
 - **Adaptateurs, exemples et configuration de ce dépôt** : AGPL-3.0, sauf indication contraire.
 
-L'API Libretro est indépendante de RetroArch. L'inclusion de son en-tête ne signifie pas que ce projet est approuvé, référencé ou distribué officiellement par RetroArch ou RetroAchievements.
+L'API Libretro est indépendante d'un frontend particulier. L'inclusion de son en-tête ne signifie pas que ce projet est approuvé, référencé ou distribué officiellement par un frontend tiers ou RetroAchievements.
 
 Les ROMs, firmwares et BIOS commerciaux ne sont pas distribués avec ce dépôt.

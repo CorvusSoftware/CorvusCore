@@ -69,7 +69,7 @@ std::size_t state_capacity = 0;
 retro_set_rumble_state_t rumble_cb = nullptr;
 
 // The "link" subsystem: two games joined by a link cable, each with its own
-// save, which RetroArch names after that game's ROM.
+// save, which a Libretro frontend can identify by its game's ROM.
 constexpr unsigned link_subsystem = 1;
 constexpr unsigned link_save_ram = 0x101;  // memory type of player 1's save, then player 2's
 
@@ -761,7 +761,7 @@ void declare_achievement_memory() {
         achievement_sizes[index] = core->read_achievement_memory(
             region.address, std::span(achievement_ram).subspan(region.address, region.size));
         // Without a select mask, Libretro wants each descriptor's length to be
-        // a power of two, and RetroArch its start aligned on that length: the
+        // a power of two, with its start aligned on that length: the
         // region is cut into such blocks (OAM, GBC banks, cartridge RAM).
         auto start = region.start;
         auto offset = static_cast<std::size_t>(region.address);
@@ -867,8 +867,8 @@ void retro_set_environment(retro_environment_t callback) {
     log_cb = env_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &logging) ? logging.log : nullptr;
     env_cb(RETRO_ENVIRONMENT_SET_SUPPORT_ACHIEVEMENTS, &achievements);
     declare_options();
-    // Two games joined by a link cable, offered by RetroArch's Load Content
-    // menu once the core is loaded.
+    // Two games joined by a link cable, exposed through the Libretro
+    // subsystem interface.
     static const std::array<retro_subsystem_memory_info, 2> saves{{{"srm", link_save_ram}, {"srm", link_save_ram + 1}}};
     static const std::array<retro_subsystem_rom_info, 2> roms{{
         {"Jeu du joueur 1", extensions, false, false, true, &saves[0], 1},

@@ -34,7 +34,7 @@ body:
     attributes:
       label: "Environnement"
       options:
-        - "Libretro / RetroArch"
+        - "Libretro"
         - "Intégration C++ directe"
         - "Runner de conformité GB/GBC"
         - "Autre"

@@ -39,7 +39,7 @@ Les tests GB/GBC disposent aussi d'un [runner de conformité](cores/gb/tests/REA
 | `libretro/` | Adaptateurs, métadonnées et tests Libretro |
 | `sdk/` | API C (`bridge.h`), fabrique C++ et paquet CMake |
 
-Conservez la séparation entre la logique matérielle et les frontends. Les dossiers `cores/` ne doivent pas dépendre d'Android, de JNI ou de RetroArch.
+Conservez la séparation entre la logique matérielle et les frontends. Les dossiers `cores/` ne doivent pas dépendre d'Android, de JNI ou d'un frontend particulier.
 
 ## Règles de contribution
 

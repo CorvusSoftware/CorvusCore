@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 # Packs the three Libretro cores of a build for one platform, with their
-# RetroArch information files: cores/ and info/ at the root of the archive.
+# Libretro core metadata: cores/ and info/ at the root of the archive.
 #   libretro/package.sh BUILD_DIR PLATFORM NAME
 # PLATFORM is linux-*, windows-*, macos-* or android-*; the archive is
 # NAME.tar.gz on Linux, NAME.zip elsewhere, in the current directory.
@@ -19,7 +19,7 @@ case "$platform" in
     # Visual Studio is a multi-config generator.
     windows-*) cp "$build"/libretro/Release/*_libretro.dll "$stage/cores/" ;;
     macos-*) cp "$build"/libretro/*_libretro.dylib "$stage/cores/" ;;
-    # RetroArch for Android names its cores *_libretro_android.so.
+    # Android Libretro packages use the *_libretro_android.so naming convention.
     android-*)
         for core in "$build"/libretro/*_libretro.so; do
             cp "$core" "$stage/cores/$(basename "$core" .so)_android.so"

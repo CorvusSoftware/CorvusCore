@@ -14,7 +14,7 @@ body:
         - "Game Boy (GB)"
         - "Game Boy Color (GBC)"
         - "Game Boy Advance (GBA)"
-        - "Libretro / RetroArch"
+        - "Libretro"
         - "Compilation / CI"
         - "Autre"
     validations:

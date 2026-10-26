@@ -124,7 +124,7 @@ jobs:
         # Android cores are cross-compiled: nothing runs on the runner.
         if: ${{ !startsWith(matrix.platform, 'android-') }}
         run: ctest --test-dir build -C Release --output-on-failure
-      - name: Package Libretro cores and RetroArch information
+      - name: Package Libretro cores and metadata
         env:
           PLATFORM: ${{ matrix.platform }}
         run: libretro/package.sh build "$PLATFORM" "corvuscore-libretro-$TAG-$PLATFORM"

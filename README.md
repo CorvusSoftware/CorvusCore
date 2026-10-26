@@ -9,7 +9,7 @@
 
 Moteurs d'émulation **Game Boy, Game Boy Color et Game Boy Advance** écrits en **C++20**, sans cœur tiers.
 
-Ce dépôt permet de les utiliser hors de l'application Android : dans **RetroArch** (Libretro), ou dans votre propre projet via une **API C** ou **C++**.
+Ce dépôt permet de les utiliser hors de l'application Android : dans tout frontend compatible avec **Libretro**, ou dans votre propre projet via une **API C** ou **C++**.
 
 | Cœur | Console | État |
 | --- | --- | --- |
@@ -17,7 +17,7 @@ Ce dépôt permet de les utiliser hors de l'application Android : dans **RetroAr
 | **CorvusGBC** | Game Boy Color | Avancé |
 | **CorvusGBA** | Game Boy Advance | Expérimental |
 
-**Sommaire :** [Compiler](#compiler) · [RetroArch](#utiliser-avec-retroarch) · [Intégrer](#intégrer-dans-un-projet) · [Tests](#tests) · [Limites](#état-et-limites) · [Versions](#versions) · [Contribuer](#contribuer) · [Licence](#licence)
+**Sommaire :** [Compiler](#compiler) · [Libretro](#utiliser-avec-libretro) · [Intégrer](#intégrer-dans-un-projet) · [Tests](#tests) · [Limites](#état-et-limites) · [Versions](#versions) · [Contribuer](#contribuer) · [Licence](#licence)
 
 ## Compiler
 
@@ -33,11 +33,11 @@ ctest --test-dir build --output-on-failure
 
 Pour ne compiler que les moteurs, ajoutez `-DCORVUSCORE_BUILD_LIBRETRO=OFF -DBUILD_TESTING=OFF`.
 
-## Utiliser avec RetroArch
+## Utiliser avec Libretro
 
 1. Téléchargez l'archive adaptée à votre plateforme depuis les [releases](https://github.com/CorvusSoftware/CorvusCore/releases), ou les artefacts d'une [exécution CI](https://github.com/CorvusSoftware/CorvusCore/actions/workflows/ci.yml) pour la version de développement.
-2. Sur ordinateur, copiez les fichiers `cores/*_libretro.*` dans le dossier **Cœurs** de RetroArch et les fichiers `info/*.info` dans le dossier **Informations des cœurs** (Paramètres → Dossiers). Sur Android, installez séparément les fichiers `*_libretro_android.so` via **Charger un cœur → Installer ou restaurer un cœur**.
-3. Chargez le cœur voulu dans **Menu principal → Charger un cœur**.
+2. Sur ordinateur, placez les fichiers `cores/*_libretro.*` et `info/*.info` dans les répertoires gérés par votre frontend Libretro. Sur Android, utilisez la méthode d'installation de cœurs prévue par votre frontend pour les fichiers `*_libretro_android.so`.
+3. Chargez le cœur depuis le gestionnaire de cœurs de votre frontend.
 
 | Plateforme | Binaires Libretro | Archive de release |
 | --- | --- | --- |
@@ -47,17 +47,17 @@ Pour ne compiler que les moteurs, ajoutez `-DCORVUSCORE_BUILD_LIBRETRO=OFF -DBUI
 | Android ARM64 | `*_libretro_android.so` | `corvuscore-libretro-vX.Y.Z-android-arm64-v8a.zip` |
 | Android ARMv7 | `*_libretro_android.so` | `corvuscore-libretro-vX.Y.Z-android-armeabi-v7a.zip` |
 
-Trois bibliothèques sont fournies par plateforme : `corvuscore_gb_libretro` (Game Boy), `corvuscore_gbc_libretro` (Game Boy Color) et `corvuscore_gba_libretro` (Game Boy Advance). Utilisez **RetroArch 64 bits** avec les binaires Windows x86-64 ; les `.so` Linux ne fonctionnent pas sous Windows. Sur Android, l'installation de cœurs personnalisés dépend de la version et des permissions de RetroArch.
+Trois bibliothèques sont fournies par plateforme : `corvuscore_gb_libretro` (Game Boy), `corvuscore_gbc_libretro` (Game Boy Color) et `corvuscore_gba_libretro` (Game Boy Advance). Utilisez un frontend Libretro **64 bits** avec les binaires Windows x86-64 ; les `.so` Linux ne fonctionnent pas sous Windows. Sur Android, l'installation de cœurs personnalisés dépend du frontend et des permissions Android.
 
 Les options des cœurs Libretro sont disponibles en français, regroupées en catégories **Image**, **Commandes**, **Système** et **Cartouche** : palette verte ou Pocket pour CorvusGB, correction LCD sur CorvusGBC/CorvusGBA, **mélange d’images** (moyenne ou rémanence), autorisation facultative des directions opposées et **codes de triche** (Game Genie, GameShark, Codebreaker, Action Replay selon la console). Les options d’image s’appliquent sans redémarrer le jeu.
 
-Pour **CorvusGB** et **CorvusGBC**, les boot ROMs facultatives peuvent être chargées depuis le dossier système de RetroArch (`dmg_boot.bin`, `gb_bios.bin`, `cgb_boot.bin`, `gbc_bios.bin`, `agb_boot.bin`). CorvusGBC permet aussi de choisir le mode **Game Boy Advance** pour les jeux GBC. Les cartouches **MBC30** sont prises en charge. Sans boot ROM, les jeux Game Boy lancés dans **CorvusGBC** utilisent désormais les palettes de compatibilité de la GBC, déterminées jeu par jeu (table de The Cutting Room Floor, [CC BY 3.0](NOTICE.md)). L'option **Couleurs des jeux Game Boy** permet aussi de choisir les gris ou les douze combinaisons de touches de la console.
+Pour **CorvusGB** et **CorvusGBC**, les boot ROMs facultatives peuvent être chargées depuis le répertoire système fourni par le frontend Libretro (`dmg_boot.bin`, `gb_bios.bin`, `cgb_boot.bin`, `gbc_bios.bin`, `agb_boot.bin`). CorvusGBC permet aussi de choisir le mode **Game Boy Advance** pour les jeux GBC. Les cartouches **MBC30** sont prises en charge. Sans boot ROM, les jeux Game Boy lancés dans **CorvusGBC** utilisent désormais les palettes de compatibilité de la GBC, déterminées jeu par jeu (table de The Cutting Room Floor, [CC BY 3.0](NOTICE.md)). L'option **Couleurs des jeux Game Boy** permet aussi de choisir les gris ou les douze combinaisons de touches de la console.
 
 **BIOS GBA facultatif.** Par défaut, CorvusCore émule lui-même les appels BIOS. L'option **BIOS** de CorvusGBA peut utiliser le vrai fichier `gba_bios.bin` (16 Kio), avec ou sans animation de démarrage. Le BIOS n'est pas fourni et les états de sauvegarde exigent le BIOS correspondant ; le format des états GBA passe à **17**.
 
-**Deux joueurs en câble link local.** Les cœurs déclarent le sous-système Libretro **Deux joueurs (câble link)**. RetroArch peut lancer deux ROMs de la même console avec leurs sauvegardes et manettes séparées, en affichant les deux écrans côte à côte. Les codes de triche, succès et capteurs de l'appareil concernent le joueur 1, et le son provient du joueur 1.
+**Deux joueurs en câble link local.** Les cœurs déclarent le sous-système Libretro **Deux joueurs (câble link)**. Un frontend Libretro prenant en charge ce sous-système peut lancer deux ROMs de la même console avec leurs sauvegardes et manettes séparées, en affichant les deux écrans côte à côte. Les codes de triche, succès et capteurs de l'appareil concernent le joueur 1, et le son provient du joueur 1.
 
-Les cœurs gèrent la vibration (MBC5 Rumble, Drill Dozer, WarioWare: Twisted!) et les capteurs des cartouches, pilotés au stick analogique gauche **ou via les capteurs de l'appareil** si RetroArch les expose (option **Capteurs de l'appareil**) :
+Les cœurs gèrent la vibration (MBC5 Rumble, Drill Dozer, WarioWare: Twisted!) et les capteurs des cartouches, pilotés au stick analogique gauche **ou via les capteurs de l'appareil** si le frontend les expose (option **Capteurs de l'appareil**) :
 
 | Capteur | Jeux | Commande |
 | --- | --- | --- |
@@ -74,9 +74,9 @@ La sauvegarde et l'horloge d'un jeu GBA sont détectées automatiquement. La dé
 | `corvuscore_gba_rtc` | `auto`, `enabled`, `disabled` |
 | `corvuscore_gba_solar_light` | Pourcentage de plein soleil : `50` par défaut, de `0` à `100` par pas de 10, ou `sensor` pour le capteur de lumière (si disponible) |
 
-Les cœurs déclarent à RetroArch la mémoire que surveille RetroAchievements : les succès s'activent comme avec les autres cœurs, et RetroArch applique lui-même les règles du mode Hardcore. RetroAchievements n'a pas encore testé CorvusCore.
+Les cœurs Libretro exposent au frontend la mémoire surveillée par RetroAchievements ; la prise en charge des succès et du mode Hardcore dépend du frontend. RetroAchievements n'a pas encore testé CorvusCore.
 
-> Les cœurs ne sont pas proposés par le téléchargeur intégré de RetroArch. Les archives de release multi-plateformes sont construites par le workflow `.github/workflows/release.yml` ; leurs équivalents de développement sont les artefacts de `.github/workflows/ci.yml`.
+> Les cœurs sont distribués par les releases CorvusCore. Les archives de release multi-plateformes sont construites par le workflow `.github/workflows/release.yml` ; leurs équivalents de développement sont les artefacts de `.github/workflows/ci.yml`.
 
 ## Intégrer dans un projet
 
@@ -144,6 +144,6 @@ Projet maintenu par **CorvusSoftware** et développé à l'origine par **GhostPu
 
 Le fichier `libretro.h` conserve sa licence MIT. Voir [NOTICE.md](NOTICE.md) pour les attributions.
 
-Aucune ROM ni aucun BIOS commercial n'est fourni. CorvusCore n'est affilié ni à Nintendo, ni à RetroArch, ni à RetroAchievements.
+Aucune ROM ni aucun BIOS commercial n'est fourni. CorvusCore n'est affilié ni à Nintendo, ni à RetroAchievements.
 
 © 2026 CorvusSoftware

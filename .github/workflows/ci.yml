@@ -62,7 +62,7 @@ jobs:
               echo "$core exports non-Libretro symbols:"; echo "$extra"; exit 1
             fi
           done
-      - name: Package cores and RetroArch information
+      - name: Package cores and Libretro metadata
         run: libretro/package.sh build linux-x86_64 corvuscore-libretro-linux-x86_64
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -128,7 +128,7 @@ jobs:
             -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/corvuscore" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
           cmake --build build/package_consumer --config Release
           build/package_consumer/Release/corvuscore_package_consumer.exe
-      - name: Package cores and RetroArch information
+      - name: Package cores and Libretro metadata
         run: libretro/package.sh build windows-x86_64 corvuscore-libretro-windows-x86_64
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -158,7 +158,7 @@ jobs:
             -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/corvuscore"
           cmake --build build/package_consumer
           build/package_consumer/corvuscore_package_consumer
-      - name: Package cores and RetroArch information
+      - name: Package cores and Libretro metadata
         run: |
           for core in build/libretro/*_libretro.dylib; do lipo "$core" -verify_arch arm64 x86_64; done
           libretro/package.sh build macos-universal corvuscore-libretro-macos-universal
@@ -203,7 +203,7 @@ jobs:
               echo "$core exports non-Libretro symbols:"; echo "$extra"; exit 1
             fi
           done
-      - name: Package cores and RetroArch information
+      - name: Package cores and Libretro metadata
         run: libretro/package.sh build "android-${{ matrix.abi }}" "corvuscore-libretro-android-${{ matrix.abi }}"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

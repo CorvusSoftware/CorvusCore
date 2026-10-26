@@ -7,20 +7,20 @@ Option CMake : `-DCORVUSCORE_BUILD_CORVUSAPI=ON`. Initialiser le sous-module
 `libcorvus_gb.so`, `libcorvus_gbc.so` et `libcorvus_gba.so` (selon plateforme).
 Chaque module expose `corvus_get_api` et adapte le SDK C natif de CorvusCore.
 
-La distribution des modules Android reste sous le controle de CorvusRetro.
+La distribution des modules Android reste sous le contrôle de CorvusRetro.
 Le SDK C de CorvusCore demeure disponible pour les intégrations directes.
 Les identifiants des boutons sont traduits explicitement ; les sauvegardes
-batterie conservent l'acquittement par generation.
+batterie conservent l'acquittement par génération.
 
-L'ABI CorvusAPI est encore experimentale (version 0). L'adaptateur CorvusCore
+L'ABI CorvusAPI est encore expérimentale (version 0). L'adaptateur CorvusCore
 reste sous sa licence AGPL-3.0-only. Seule l'interface CorvusAPI est sous MIT.
 
 ## Extension mémoire RetroAchievements
 
-Depuis0.14.1, chaque module expose aussi `corvus_get_achievements_api`, décrit
-par le contrat public MIT `corvus/achievements.h` version1. Il fournit une copie
+Depuis 0.14.1, chaque module expose aussi `corvus_get_achievements_api`, décrit
+par le contrat public MIT `corvus/achievements.h` version 1. Il fournit une copie
 en lecture seule de l'espace mémoire RetroAchievements, avec les identifiants
-Game Boy4, Game Boy Color6 et Game Boy Advance5. Le handle est exactement celui
+Game Boy (4), Game Boy Color (6) et Game Boy Advance (5). Le handle est exactement celui
 retourné par `corvus_core_api.create` : aucun handle SDK privé ne traverse cette ABI.
 
 Les lectures ont lieu entre deux appels de frame, sur le même thread que le cœur.

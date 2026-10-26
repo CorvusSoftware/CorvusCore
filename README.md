@@ -6,7 +6,7 @@ CorvusCore est la couche d'émulation native de [CorvusSoftware](https://github.
 
 [![CI](https://github.com/CorvusSoftware/CorvusCore/actions/workflows/ci.yml/badge.svg)](https://github.com/CorvusSoftware/CorvusCore/actions/workflows/ci.yml)
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)
-[![Licence AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0--only-6C7086)](LICENSE)
+[![Licence AGPL-3.0](https://img.shields.io/badge/Licence-AGPL--3.0-663399?style=plastic&logo=gnu&logoColor=white)](LICENSE)
 
 [**Démarrer**](#démarrage-rapide) · [**Moteurs**](#moteurs) · [**Interfaces**](#interfaces-et-architecture) · [**Tests**](#tests-et-conformité) · [**Documentation**](#documentation)
 

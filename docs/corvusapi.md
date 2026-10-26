@@ -2,6 +2,8 @@
 
 Copyright (C) 2026 CorvusSoftware. SPDX-License-Identifier: AGPL-3.0-only.
 
+En-tête public : `#include <corvusapi.h>` (API de base et extension optionnelle).
+
 Option CMake : `-DCORVUSCORE_BUILD_CORVUSAPI=ON`. Initialiser le sous-module
 `third_party/CorvusAPI` avant compilation. Trois modules sont produits :
 `libcorvus_gb.so`, `libcorvus_gbc.so` et `libcorvus_gba.so` (selon plateforme).

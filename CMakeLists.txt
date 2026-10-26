@@ -12,7 +12,6 @@ if(PROJECT_IS_TOP_LEVEL AND NOT CORVUSCORE_MULTI_CONFIG AND NOT CMAKE_BUILD_TYPE
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-option(CORVUSCORE_BUILD_LIBRETRO "Build the three Libretro frontend adapters" ON)
 option(CORVUSCORE_BUILD_CORVUSAPI "Build CorvusAPI shared core modules" OFF)
 option(CORVUSCORE_INSTALL "Install the engines, the C API and the CMake package" ${PROJECT_IS_TOP_LEVEL})
 include(CTest)
@@ -63,14 +62,9 @@ if(CORVUSCORE_BUILD_CORVUSAPI)
     endif()
 endif()
 
-if(CORVUSCORE_BUILD_LIBRETRO)
-    add_subdirectory(libretro)
-endif()
-
 if(CORVUSCORE_INSTALL)
     # find_package(CorvusCore) then link CorvusCore::corvuscore (C++)
-    # or CorvusCore::corvuscore_c_api (C ABI). Libretro cores are not installed:
-    # they belong in the frontend's own directories.
+    # or CorvusCore::corvuscore_c_api (C ABI). CorvusAPI modules are built separately.
     include(GNUInstallDirs)
     include(CMakePackageConfigHelpers)
     set(CORVUSCORE_PACKAGE_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/CorvusCore")

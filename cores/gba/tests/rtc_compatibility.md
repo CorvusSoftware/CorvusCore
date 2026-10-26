@@ -144,15 +144,14 @@ explicites sont exécutés sur POSIX ; les chemins Windows restent compilables.
 `gba_corvus_core` exécute un programme ARM synthétique à travers l'interface
 publique, sans forçage, et vérifie état/date/heure, progression, reset, rechargement,
 offset, deux banques Flash et accès à l'horloge système réelle.
-`libretro_smoke_gba` vérifie le mode auto et la taille stable de SAVE_RAM dès le
-chargement, l'import du frontend, le reset, le forçage off et le cas sans pilote.
+Les essais historiques d'import et de sauvegarde côté frontend dépendaient de l'ancien adaptateur, désormais retiré.
 
 Commandes depuis la racine, avec CMake dans PATH :
 
 ```sh
 cmake -S . -B build
 cmake --build build --parallel 4
-ctest --test-dir build -R '^(gba_raven_rtc|gba_corvus_core|libretro_smoke_gba)$' --output-on-failure
+ctest --test-dir build -R '^(gba_raven_rtc|gba_corvus_core)$' --output-on-failure
 ctest --test-dir build --output-on-failure --parallel 4
 ```
 
@@ -163,15 +162,15 @@ cmake -S . -B build-rtc-sanitize -DCMAKE_BUILD_TYPE=Debug \
   -DCMAKE_CXX_FLAGS='-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS'
 cmake --build build-rtc-sanitize --parallel 2
 ctest --test-dir build-rtc-sanitize \
-  -R '^(gba_raven_.*|gba_save_state|libretro_smoke_gba|corvuscore_c_api)$' --output-on-failure
+  -R '^(gba_raven_.*|gba_save_state|corvuscore_c_api)$' --output-on-failure
 ```
 
 Résultats obtenus sur la branche de correction issue de `main` : **245/245 tests**
-au total, **12/12 suites** GBA/API/Libretro sous ASan/UBSan, consommateur du paquet
+au total, **12/12 suites** GBA/API et ancien adaptateur (validation historique) sous ASan/UBSan, consommateur du paquet
 CMake fraîchement installé réussi. La même correction avait aussi passé les
 260 tests du contexte de développement contenant les jalons NDS précédents ;
 ces jalons ne font pas partie de cette branche de correction.
-Les sources GB/GBC, NDS, `GbaCore::current_epoch` et le frontend Libretro de
+Les sources GB/GBC, NDS, `GbaCore::current_epoch` et les modules frontend de
 production ne nécessitent aucune modification pour cette correction.
 
 **Validation réelle restante :** charger la ROM Unbound exacte qui pose problème,

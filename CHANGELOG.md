@@ -18,7 +18,7 @@ Correctifs portés depuis [RavenCore](https://github.com/GhostPunishR/RavenCore)
 
 ### Modifié
 
-- Renommage du projet en **CorvusCore** sous **CorvusSoftware**, avec namespaces, API C, cibles CMake, variables de build, sorties Libretro, chemins d'en-tête et documentation cohérents.
+- Renommage du projet en **CorvusCore** sous **CorvusSoftware**, avec namespaces, API C, cibles CMake, variables de build, sorties ancien adaptateur frontend, chemins d'en-tête et documentation cohérents.
 - **Rupture de compatibilité des noms d'API :** les intégrations externes utilisant `ravenemu` doivent migrer vers `corvuscore`. Historique antérieur préservé ci-dessous.
 
 ## 0.14.1 - 2026-10-26
@@ -34,16 +34,16 @@ Correctifs portés depuis [RavenCore](https://github.com/GhostPunishR/RavenCore)
 
 ## 0.14.0 - 2026-10-24
 
-Portage des évolutions de [RavenCore](https://github.com/GhostPunishR/RavenCore) jusqu'au commit [`15675cc`](https://github.com/GhostPunishR/RavenCore/commit/15675cc3af4f9b07f2e10cc5a7ca6234ea1c77cc), adaptées à **CorvusCore**, ses API et ses cœurs Libretro.
+Portage des évolutions de [RavenCore](https://github.com/GhostPunishR/RavenCore) jusqu'au commit [`15675cc`](https://github.com/GhostPunishR/RavenCore/commit/15675cc3af4f9b07f2e10cc5a7ca6234ea1c77cc), adaptées à **CorvusCore**, ses API et ses cœurs ancien adaptateur frontend.
 
-Cette version ouvre à l'API C les codes de triche et la Game Boy Color d'une Game Boy Advance : RavenEmu Android et RavenEmu PC peuvent désormais les proposer. Les jeux Game Boy sur une GBC sans boot ROM prennent les couleurs que sa boot ROM leur choisit, jeu par jeu, au lieu de gris. Le BIOS d'une GBA peut remplacer celui de CorvusCore. Dans les frontends Libretro compatibles, les cartouches à capteur suivent les capteurs du téléphone, et deux joueurs peuvent se relier par câble link. Le format des états GBA passe à 17.
+Cette version ouvre à l'API C les codes de triche et la Game Boy Color d'une Game Boy Advance : RavenEmu Android et RavenEmu PC peuvent désormais les proposer. Les jeux Game Boy sur une GBC sans boot ROM prennent les couleurs que sa boot ROM leur choisit, jeu par jeu, au lieu de gris. Le BIOS d'une GBA peut remplacer celui de CorvusCore. Dans les frontends ancien adaptateur frontend compatibles, les cartouches à capteur suivent les capteurs du téléphone, et deux joueurs peuvent se relier par câble link. Le format des états GBA passe à 17.
 
 ### Ajouté
 
 - **Codes de triche dans l'API C.**
   - `corvuscore_check_cheat()` vérifie un code sans handle, au moment où le joueur le saisit, et laisse la raison d'un refus, en français, dans `corvuscore_last_error()`.
   - `corvuscore_set_cheats()` active une liste de codes à partir de l'image suivante. Si une entrée est refusée, la liste précédente reste active et l'erreur nomme l'entrée, par exemple « code de triche 2 : … ».
-  - Formats, survie aux chargements, réinitialisations et états : comme dans l'adaptateur Libretro depuis la 0.12.0.
+  - Formats, survie aux chargements, réinitialisations et états : comme dans l'adaptateur ancien adaptateur frontend depuis la 0.12.0.
 - **`CORVUSCORE_GBC_ON_GBA`** pour `corvuscore_create()`, et `sdk::System::game_boy_color_on_gba` dans le SDK C++ : la GBC d'une Game Boy Advance, `gb::HardwareModel::agb` depuis la 0.13.0.
 - **Couleurs des jeux Game Boy sur une GBC.**
   - `Core::set_gbc_compatibility_colors()` et `corvuscore_set_gbc_colors()` choisissent entre les couleurs de la boot ROM, quatre gris et les douze combinaisons de touches tenues pendant son logo : Haut (brun), A + Haut (rouge), B + Haut (sépia), Gauche (bleu), A + Gauche (bleu-violet), B + Gauche (gris), Bas (pastel), A + Bas (jaune et rouge), B + Bas (jaune et brun), Droite (vert et rouge), A + Droite (vert et bleu), B + Droite (négatif).
@@ -55,16 +55,16 @@ Cette version ouvre à l'API C les codes de triche et la Game Boy Color d'une Ga
 - **Vrai BIOS GBA, facultatif.** CorvusCore répond toujours lui-même aux appels du BIOS par défaut ; le BIOS d'une console (16 Kio) peut désormais le remplacer.
   - Les SWI et les IRQ du jeu passent alors par lui. Il joue son animation de démarrage, sauf si on la saute : le jeu démarre alors comme avec le BIOS de CorvusCore.
   - `Core::set_gba_bios()` et `corvuscore_set_gba_bios()` le donnent, ou reviennent au BIOS de CorvusCore, à partir du prochain chargement ou reset.
-  - Dans CorvusGBA, l'option **BIOS** (catégorie Système) lit `gba_bios.bin` dans le répertoire système fourni par le frontend Libretro : « BIOS de CorvusCore » par défaut, « Vrai BIOS, avec son animation » ou « Vrai BIOS, sans animation ». S'il manque, un message le dit et le jeu démarre avec le BIOS de CorvusCore. Le fichier d'informations le déclare comme micrologiciel facultatif.
+  - Dans CorvusGBA, l'option **BIOS** (catégorie Système) lit `gba_bios.bin` dans le répertoire système fourni par le frontend ancien adaptateur frontend : « BIOS de CorvusCore » par défaut, « Vrai BIOS, avec son animation » ou « Vrai BIOS, sans animation ». S'il manque, un message le dit et le jeu démarre avec le BIOS de CorvusCore. Le fichier d'informations le déclare comme micrologiciel facultatif.
   - Un état ne se recharge qu'avec le BIOS qui l'a créé. Sinon, le refus le dit : « État pris avec un vrai BIOS GBA, absent ici », « … avec le BIOS de CorvusCore, pas avec un vrai BIOS » ou « … avec un autre BIOS GBA ». Recharger un état garde le BIOS en place.
   - Aucun BIOS n'est fourni.
-- **Capteurs du téléphone ou de la manette via Libretro.** Les cœurs Libretro lisent ceux de l'appareil par l'interface de capteurs de Libretro, avec les conversions de RavenEmu Android :
+- **Capteurs du téléphone ou de la manette via ancien adaptateur frontend.** Les cœurs ancien adaptateur frontend lisent ceux de l'appareil par l'interface de capteurs de ancien adaptateur frontend, avec les conversions de RavenEmu Android :
   - l'accéléromètre incline Kirby Tilt 'n' Tumble et Command Master (MBC7), Yoshi Topsy-Turvy et Koro Koro Puzzle. À plat, l'appareil n'est pas incliné ;
   - le gyroscope fait tourner WarioWare: Twisted! : un demi-tour par seconde donne la pleine échelle ;
   - le capteur de lumière éclaire Boktai si l'option **Lumière du capteur solaire** vaut « Capteur de lumière de l'appareil ». Rien sous 1000 lux, le plein soleil vers 100 000 lux. Sans capteur, un message le dit et le soleil reste à 50 %.
   - Le stick gauche s'ajoute aux capteurs. Un capteur ne s'allume que pour un jeu qui en a besoin, et s'éteint avec lui. L'option **Capteurs de l'appareil** (catégorie Commandes) les ignore.
   - L'accélération en m/s² de certains frontends anciens est reconnue à sa norme, et ramenée en g.
-- **Deux joueurs reliés par câble link via Libretro.** Les trois cœurs déclarent le sous-système « Deux joueurs (câble link) » (`link`). Il charge deux jeux de la même console et les relie par le câble local de CorvusCore :
+- **Deux joueurs reliés par câble link via ancien adaptateur frontend.** Les trois cœurs déclarent le sous-système « Deux joueurs (câble link) » (`link`). Il charge deux jeux de la même console et les relie par le câble local de CorvusCore :
   - les deux écrans côte à côte, le joueur 1 à gauche ;
   - une manette par joueur, ports 1 et 2 ;
   - une sauvegarde par joueur, que le frontend identifie d'après la ROM de chacun : celle d'une partie en solo sert telle quelle ;
@@ -103,13 +103,13 @@ Cette version ouvre à l'API C les codes de triche et la Game Boy Color d'une Ga
   - un état repris continue au même cycle ; il est refusé sans ce BIOS, avec un autre, et un état du BIOS de CorvusCore l'est avec lui ;
   - un nouveau réglage attend le prochain chargement, un état rechargé d'ici là garde le BIOS en place ;
   - une image de 16383 octets est refusée, et un cœur Game Boy refuse tout BIOS GBA.
-- `libretro_smoke_gba` : l'option BIOS déclarée, avec sa catégorie et sa valeur par défaut ; `gba_bios.bin` lu dans le dossier système, avec ou sans animation, ignoré par défaut, et son absence signalée.
-- `libretro_smoke_*`, avec un frontend qui simule les capteurs d'un téléphone :
+- `ancien_test_integration_gba` : l'option BIOS déclarée, avec sa catégorie et sa valeur par défaut ; `gba_bios.bin` lu dans le dossier système, avec ou sans animation, ignoré par défaut, et son absence signalée.
+- `ancien_test_integration_*`, avec un frontend qui simule les capteurs d'un téléphone :
   - un jeu MBC7 lit 81D0h - 38h et 81D0h + 1Ch pour un appareil penché de 0,5 g à droite et de 0,25 g vers le joueur, en g comme en m/s². Il lit le repos quand l'option écarte les capteurs, et l'accéléromètre se rallume quand on la rétablit en jeu ;
   - sur GBA, Yoshi Topsy-Turvy lit 392h + 70h et 3A0h - 38h dans son capteur. WarioWare: Twisted! lit 6C0h + 191h pour un quart de tour par seconde dans le sens horaire ;
   - le capteur de lumière ne s'allume pour Boktai que si l'option le demande, et son absence est signalée ;
   - chaque capteur s'éteint avec le jeu.
-- `libretro_smoke_*`, deux joueurs reliés :
+- `ancien_test_integration_*`, deux joueurs reliés :
   - le sous-système est déclaré, avec une sauvegarde par joueur ;
   - l'image fait deux largeurs et les deux manettes sont lues ;
   - le joueur 1 reçoit par le port série le mot du joueur 2 : 99h sur Game Boy (horloge interne contre externe), 5678h sur GBA en mode multijoueur. Sans câble, il lirait FFh ;
@@ -126,7 +126,7 @@ Cette version ouvre à l'API C les codes de triche et la Game Boy Color d'une Ga
 
 Portage des nouveautés de [RavenCore](https://github.com/GhostPunishR/RavenCore) jusqu'au commit [`70f251a`](https://github.com/GhostPunishR/RavenCore/commit/70f251ae75456a3f340679280e8ae1be60f3c701), adapté aux noms et à l'identité **CorvusCore**.
 
-Cette version comble une partie des écarts relevés face aux émulateurs de référence (mGBA, SameBoy, Gambatte, VBA-M, gpSP). Elle prend en charge le MBC30 et le mode Game Boy Advance des jeux GBC. Les cœurs Libretro gagnent le mélange d'images, le blocage des directions opposées et les boot ROMs du dossier système. L'API C et le format des états ne changent pas ; l'API C++ gagne un modèle de console.
+Cette version comble une partie des écarts relevés face aux émulateurs de référence (mGBA, SameBoy, Gambatte, VBA-M, gpSP). Elle prend en charge le MBC30 et le mode Game Boy Advance des jeux GBC. Les cœurs ancien adaptateur frontend gagnent le mélange d'images, le blocage des directions opposées et les boot ROMs du dossier système. L'API C et le format des états ne changent pas ; l'API C++ gagne un modèle de console.
 
 ### Ajouté
 
@@ -136,7 +136,7 @@ Cette version comble une partie des écarts relevés face aux émulateurs de ré
   - Le diviseur prend un cycle machine d'avance : celui de cette instruction en plus.
   - Les jeux qui testent ce registre débloquent leurs bonus GBA, comme Zelda Oracle ou Shantae.
   - Dans CorvusGBC, l'option **Console émulée** le choisit, au chargement du jeu.
-- **Mélange d'images** dans les trois cœurs Libretro. Il atténue le scintillement des jeux qui affichent un objet une image sur deux.
+- **Mélange d'images** dans les trois cœurs ancien adaptateur frontend. Il atténue le scintillement des jeux qui affichent un objet une image sur deux.
   - **Mélange** : la moyenne des deux dernières images.
   - **Rémanence** : 3/8 de l'image affichée restent, comme sur un écran LCD lent.
   - Le mélange s'applique après la palette et la correction des couleurs, et change pendant le jeu.
@@ -145,7 +145,7 @@ Cette version comble une partie des écarts relevés face aux émulateurs de ré
   - Fichiers reconnus : `dmg_boot.bin` ou `gb_bios.bin`, `cgb_boot.bin` ou `gbc_bios.bin`, `agb_boot.bin` pour le mode Game Boy Advance.
   - Un fichier d'une autre taille est ignoré, et le journal le dit.
   - L'option **Boot ROM** les écarte. Les fichiers `.info` les déclarent comme firmwares facultatifs.
-- Les options Libretro se rangent en quatre catégories : **Image**, **Commandes**, **Système** et **Cartouche**.
+- Les options ancien adaptateur frontend se rangent en quatre catégories : **Image**, **Commandes**, **Système** et **Cartouche**.
 
 ### Modifié
 
@@ -164,7 +164,7 @@ Cette version comble une partie des écarts relevés face aux émulateurs de ré
 - `gb_corvus_core` :
   - registres de démarrage d'une GBC et d'une GBA, pour un jeu GBC et pour un jeu Game Boy ;
   - avec une boot ROM maison : un état pris après elle se recharge sans elle ou avec une autre ; un état pris pendant qu'elle s'exécute est refusé dans ces deux cas.
-- `libretro_smoke_gb`, `_gbc` et `_gba`, avec un jeu maison qui change de fond à chaque image et range la croix en mémoire :
+- `ancien_test_integration_gb`, `_gbc` et `_gba`, avec un jeu maison qui change de fond à chaque image et range la croix en mémoire :
   - gauche et droite bloquées, puis autorisées ;
   - le mélange et la rémanence, comparés au calcul attendu ;
   - sur CorvusGBC, B vaut 1 en mode Game Boy Advance ;
@@ -173,21 +173,21 @@ Cette version comble une partie des écarts relevés face aux émulateurs de ré
 
 ## 0.12.0 - 2026-10-23
 
-Cette version complète les cœurs Libretro. Ils sont désormais publiés pour Windows, macOS et Android, prennent les codes de triche, gagnent des options d'image et signalent un jeu refusé. Le cœur ne dessine plus les images que le frontend n'affiche pas. L'API C et le format des états ne changent pas ; l'API C++ gagne les codes de triche.
+Cette version complète les cœurs ancien adaptateur frontend. Ils sont désormais publiés pour Windows, macOS et Android, prennent les codes de triche, gagnent des options d'image et signalent un jeu refusé. Le cœur ne dessine plus les images que le frontend n'affiche pas. L'API C et le format des états ne changent pas ; l'API C++ gagne les codes de triche.
 
 ### Ajouté
 
-- **Cœurs Libretro pour toutes les plateformes.** Chaque version publie, en plus de Linux x86-64 :
+- **Cœurs ancien adaptateur frontend pour toutes les plateformes.** Chaque version publie, en plus de Linux x86-64 :
   - Windows x86-64, avec le runtime C++ intégré : pas de redistribuable Visual C++ à installer ;
   - macOS 11 ou plus récent, en une bibliothèque universelle pour Apple Silicon et Intel ;
-  - Android arm64-v8a et armeabi-v7a, nommés `*_libretro_android.so` selon la convention Libretro sur Android.
-  - La CI fournit les mêmes archives à chaque PR. `libretro/package.sh` les assemble : `cores/` et `info/`.
+  - Android arm64-v8a et armeabi-v7a, nommés `*_module_android_historique.so` selon la convention ancien adaptateur frontend sur Android.
+  - La CI fournit les mêmes archives à chaque PR. `ancien outil de packaging` les assemble : `cores/` et `info/`.
 - **Options d'image.**
   - Palette des jeux Game Boy : vert (Game Boy) ou gris (Game Boy Pocket).
   - Correction des couleurs LCD pour la Game Boy Color et la Game Boy Advance, la même que RavenEmu Android : environ 28 % de désaturation, puis un gamma de 1,15.
   - Elles changent pendant le jeu.
 - **Options v2.** Libellés et descriptions en français, catégories **Image** et **Cartouche**. Un frontend plus ancien garde la liste simple.
-- **Codes de triche**, dans le menu de triche du frontend Libretro et par l'API C++.
+- **Codes de triche**, dans le menu de triche du frontend ancien adaptateur frontend et par l'API C++.
   - **Game Boy et Game Boy Color.**
     - Game Genie : l'octet est remplacé à la lecture de la ROM, comme le fait l'adaptateur ; sa comparaison écarte les autres banques.
     - GameShark : l'octet est récrit à chaque image, dans la banque de RAM de cartouche choisie par le code, ou de WRAM de la GBC pour 91 à 97.
@@ -197,7 +197,7 @@ Cette version complète les cœurs Libretro. Ils sont désormais publiés pour W
   - **Non pris en charge**, avec un message qui le dit : patchs de ROM GBA, changement de chiffrement `DEADFACE`, Codebreaker chiffré (type 9). Les codes des boutons des appareils n'ont pas d'effet, faute de bouton.
   - Un code refusé affiche sa raison à l'écran et dans le journal, par exemple « CorvusGB : code de triche 1 refusé (le code GameShark « 01021234 » vise la ROM : c'est le rôle d'un code Game Genie) ».
   - **API C++.** `parse_cheat` décode une entrée et lève `CheatError` avec la raison d'un refus ; `Core::set_cheats` active la liste. Les codes survivent aux changements de ROM, aux réinitialisations et aux états, sans y être enregistrés.
-- **Messages.** Un jeu refusé affiche sa raison à l'écran et dans le journal du frontend Libretro, par exemple « CorvusGBA : jeu refusé (ROM GBA trop courte) ». Une erreur pendant le jeu, une fois par partie, et un état refusé vont au journal.
+- **Messages.** Un jeu refusé affiche sa raison à l'écran et dans le journal du frontend ancien adaptateur frontend, par exemple « CorvusGBA : jeu refusé (ROM GBA trop courte) ». Une erreur pendant le jeu, une fois par partie, et un état refusé vont au journal.
 
 ### Modifié
 
@@ -216,7 +216,7 @@ Cette version complète les cœurs Libretro. Ils sont désormais publiés pour W
 
 ### Tests
 
-- `libretro_smoke_gb`, `_gbc` et `_gba` vérifient désormais :
+- `ancien_test_integration_gb`, `_gbc` et `_gba` vérifient désormais :
   - une image et un son non voulus : l'image précédente est reprise, aucun son ne part ;
   - un jeu refusé : sa raison est au journal et à l'écran ;
   - la palette Pocket appliquée en cours de jeu ;
@@ -334,13 +334,13 @@ Cette version complète la carte mémoire RetroAchievements de la Game Boy et de
 
 ### Ajouté
 
-- **Game Boy et Game Boy Color : carte mémoire RetroAchievements complète.** La banque de ROM paginée (0x4000-0x7FFF) et les registres d'E/S (0xFF00-0xFF7F) rejoignent la carte, comme dans la table de rcheevos. Un succès qui les lit n'est plus signalé non pris en charge. Cela vaut pour les cœurs Libretro et pour `read_achievement_memory()`, que RavenEmu utilise.
+- **Game Boy et Game Boy Color : carte mémoire RetroAchievements complète.** La banque de ROM paginée (0x4000-0x7FFF) et les registres d'E/S (0xFF00-0xFF7F) rejoignent la carte, comme dans la table de rcheevos. Un succès qui les lit n'est plus signalé non pris en charge. Cela vaut pour les cœurs ancien adaptateur frontend et pour `read_achievement_memory()`, que RavenEmu utilise.
   - Les registres d'E/S se lisent par le même code que les lectures du CPU, sans effet de bord sur l'émulation.
   - Le détail de la carte, ses limites et ses tests sont dans [docs/retroachievements.md](docs/retroachievements.md).
 
 ### Corrigé
 
-- **Libretro, Game Boy : première fenêtre de ROM figée.** Elle n'était copiée qu'au démarrage, au reset et au chargement d'un état. Le MBC1 en mode 1 et le MMM01 la commutent pourtant en cours de partie : un succès y lisait alors l'ancienne banque. Les deux fenêtres sont maintenant recopiées à chaque image.
+- **ancien adaptateur frontend, Game Boy : première fenêtre de ROM figée.** Elle n'était copiée qu'au démarrage, au reset et au chargement d'un état. Le MBC1 en mode 1 et le MMM01 la commutent pourtant en cours de partie : un succès y lisait alors l'ancienne banque. Les deux fenêtres sont maintenant recopiées à chaque image.
 - **GBA : horloge des ROM Pokémon modifiées** ([#28](https://github.com/GhostPunishR/RavenCore/pull/28)). Les pilotes compatibles CFRU (Pokémon Unbound, par exemple) peuvent omettre le marqueur de la bibliothèque Seiko : l'horloge n'était alors pas détectée. Une ROM qui porte l'identité de Rouge Feu et un groupe de références aux trois ports du pilote série active l'horloge. Le Rouge Feu d'origine, sans horloge, reste sans. Le forçage explicite garde la priorité.
 
 ### Modifié
@@ -358,24 +358,24 @@ Cette version complète la carte mémoire RetroAchievements de la Game Boy et de
   - registres d'E/S égaux à ce qu'une ROM de test en recopie par le CPU ;
   - banque paginée choisie par un MBC5 et première fenêtre commutée par un MBC1 en mode 1.
 - `gb_cartridge_mbc` : pour chaque contrôleur et chaque banque choisie, la copie d'une fenêtre est, octet pour octet, la lecture du CPU. Le test échoue si la copie oublie le décalage dans la banque.
-- `libretro_smoke_gb` et `libretro_smoke_gbc` : la carte contient les deux fenêtres de ROM et les E/S, et suit un changement de banque à l'image suivante. Le test échoue si la première fenêtre n'est plus recopiée à chaque image.
+- `ancien_test_integration_gb` et `ancien_test_integration_gbc` : la carte contient les deux fenêtres de ROM et les E/S, et suit un changement de banque à l'image suivante. Le test échoue si la première fenêtre n'est plus recopiée à chaque image.
 
 ## 0.7.1 - 2026-10-18
 
-Cette version active RetroAchievements dans les cœurs Libretro ([#27](https://github.com/GhostPunishR/RavenCore/pull/27)). L'API et le format des états ne changent pas.
+Cette version active RetroAchievements dans les cœurs ancien adaptateur frontend ([#27](https://github.com/GhostPunishR/RavenCore/pull/27)). L'API et le format des états ne changent pas.
 
 ### Ajouté
 
-- **Libretro : RetroAchievements.** Les trois cœurs annoncent la prise en charge des succès et déclarent au frontend Libretro une carte mémoire (`RETRO_ENVIRONMENT_SET_MEMORY_MAPS`), aux adresses de la console et dans la disposition de rcheevos :
+- **ancien adaptateur frontend : RetroAchievements.** Les trois cœurs annoncent la prise en charge des succès et déclarent au frontend ancien adaptateur frontend une carte mémoire (`RETRO_ENVIRONMENT_SET_MEMORY_MAPS`), aux adresses de la console et dans la disposition de rcheevos :
   - **GBA :** IWRAM en 0x03000000, EWRAM en 0x02000000, et puce de sauvegarde en 0x0E000000 (64 Kio au plus).
   - **Game Boy et Game Boy Color :** banque 0 de la ROM, VRAM, RAM de cartouche dans toutes ses banques, WRAM (son miroir y renvoie), OAM, HRAM et IE, et banques 2 à 7 de la WRAM de la Game Boy Color.
 
   Le frontend peut conserver des pointeurs vers cette mémoire pendant toute la partie, alors que RavenCore recrée sa machine à chaque reset et à chaque chargement d'état. Le frontend lit donc une copie de l'espace de RetroAchievements, rafraîchie après chaque image (quand les succès sont évalués), après un reset et après un chargement d'état. Une écriture du frontend dans cette copie n'atteint pas le jeu : les codes de triche restent non pris en charge.
   - Sur Game Boy, la banque de ROM paginée et les registres d'E/S ne sont pas exposés : un succès qui les lit est signalé comme non pris en charge. La banque 0 est copiée telle qu'elle est au démarrage, au reset et au chargement d'un état. La relire à chaque image, à travers le contrôleur de la cartouche, coûterait environ 2 % du temps d'une image.
-  - Chaque région est découpée en descripteurs dont la longueur est une puissance de deux et le départ aligné sur elle : c'est ce qu'exige `libretro.h` sans masque `select`, et certains frontends peuvent sinon rejeter toute la carte (OAM, banques de la WRAM GBC, RAM de cartouche). Relevé par la revue Codex.
+  - Chaque région est découpée en descripteurs dont la longueur est une puissance de deux et le départ aligné sur elle : c'est ce qu'exige `ancien en-tête de frontend` sans masque `select`, et certains frontends peuvent sinon rejeter toute la carte (OAM, banques de la WRAM GBC, RAM de cartouche). Relevé par la revue Codex.
   - Les fichiers `.info` indiquent `memory_descriptors = "true"`.
 
-  Vérifié en local avec le code de rcheevos qui relie un cœur Libretro aux succès dans un frontend Libretro (`rc_libretro`), compilé hors du dépôt. Il retrouve les régions GBA et Game Boy Color, y compris après le pré-traitement que le frontend applique à la carte, et chaque octet lu par ce chemin est celui que rend le cœur. Pas encore validé en jeu dans un frontend Libretro.
+  Vérifié en local avec le code de rcheevos qui relie un cœur ancien adaptateur frontend aux succès dans un frontend ancien adaptateur frontend (`ancien pont de succès`), compilé hors du dépôt. Il retrouve les régions GBA et Game Boy Color, y compris après le pré-traitement que le frontend applique à la carte, et chaque octet lu par ce chemin est celui que rend le cœur. Pas encore validé en jeu dans un frontend ancien adaptateur frontend.
 
 ### Modifié
 
@@ -388,8 +388,8 @@ Cette version active RetroAchievements dans les cœurs Libretro ([#27](https://g
 
 ### Tests
 
-- `libretro_smoke_gb`, `libretro_smoke_gbc` et `libretro_smoke_gba` vérifient plusieurs points :
-  - les succès sont annoncés et la carte mémoire est déclarée aux adresses de la console, en descripteurs conformes aux contraintes Libretro ;
+- `ancien_test_integration_gb`, `ancien_test_integration_gbc` et `ancien_test_integration_gba` vérifient plusieurs points :
+  - les succès sont annoncés et la carte mémoire est déclarée aux adresses de la console, en descripteurs conformes aux contraintes ancien adaptateur frontend ;
   - la sauvegarde et la RAM de cartouche y apparaissent ;
   - un compteur en mémoire de travail y suit chaque image, garde son adresse, et repart d'un état rechargé comme d'un reset.
 - `gb_raven_core` et `gba_raven_core` vérifient qu'une lecture qui franchit une frontière de région rend les mêmes octets que des lectures d'un octet.
@@ -547,7 +547,7 @@ Cette version corrige le redémarrage des DMA GBA ([#21](https://github.com/Ghos
 
 ### Compatibilité des sauvegardes
 
-- **GBA, jeux à horloge** (Pokémon Rubis, Saphir et Émeraude, Boktai, etc.) : la sauvegarde rendue par `snapshot_battery_ram()`, `ravenemu_copy_battery_generation()` et le `SAVE_RAM` de Libretro est la mémoire de la puce suivie du bloc de 16 octets de mGBA. Une sauvegarde sans ce bloc, d'une version précédente ou d'un autre émulateur, se charge comme avant, horloge à l'heure de l'appareil. Les versions précédentes de RavenCore et mGBA relisent les nouvelles sauvegardes.
+- **GBA, jeux à horloge** (Pokémon Rubis, Saphir et Émeraude, Boktai, etc.) : la sauvegarde rendue par `snapshot_battery_ram()`, `ravenemu_copy_battery_generation()` et le `SAVE_RAM` de ancien adaptateur frontend est la mémoire de la puce suivie du bloc de 16 octets de mGBA. Une sauvegarde sans ce bloc, d'une version précédente ou d'un autre émulateur, se charge comme avant, horloge à l'heure de l'appareil. Les versions précédentes de RavenCore et mGBA relisent les nouvelles sauvegardes.
 - Les autres jeux GBA et tous les jeux GB/GBC gardent exactement la même sauvegarde.
 
 ## 0.4.0 - 2026-10-16
@@ -564,7 +564,7 @@ Cette version retire les derniers restes de l'ancien nom, RavenEmu Cores ([#20](
 - **Cibles du paquet CMake** : l'espace de noms devient `RavenCore::`. `RavenEmu::ravenemu_cores` devient `RavenCore::ravencore` et `RavenEmu::ravenemu_c_api` devient `RavenCore::ravenemu_c_api`. Un projet qui consomme une installation de RavenCore doit adapter son `target_link_libraries()`.
 - **Inclusion par `add_subdirectory()` ou FetchContent** : la cible C++ `ravenemu_cores` devient `ravencore`. `ravenemu_c_api`, `ravenemu_common`, `gb_raven_core`, `gbc_raven_core` et `gba_raven_core` gardent leur nom. Le dossier `cores/` ne déclare plus son propre `project()`, vestige de l'import des moteurs depuis RavenEmu : les variables `ravenemu_cores_*` qu'il créait disparaissent. Un projet qui déclare RavenCore avec FetchContent sous le nom `ravenemu_cores`, comme RavenEmu, garde sa variable `ravenemu_cores_SOURCE_DIR`, qui vient de FetchContent.
 
-Le préfixe `ravenemu` reste celui de l'API : fonctions C `ravenemu_*`, espace de noms C++ `ravenemu::`, en-têtes `ravenemu/`, options `RAVENEMU_*` et cœurs Libretro `ravenemu_*_libretro`.
+Le préfixe `ravenemu` reste celui de l'API : fonctions C `ravenemu_*`, espace de noms C++ `ravenemu::`, en-têtes `ravenemu/`, options `RAVENEMU_*` et cœurs ancien adaptateur frontend `ravenemu_*_module_historique`.
 
 ### Compatibilité des états instantanés
 
@@ -597,7 +597,7 @@ Cette version émule les capteurs des cartouches GBA ([#16](https://github.com/G
   - inclinaison de Yoshi Topsy-Turvy et Koro Koro Puzzle : registres E008000h à E008500h dans la zone SRAM.
 - API C++ : `Core::cartridge_sensors()`, `set_solar_light()`, `set_rotation_speed()` et `set_gba_tilt()`. Le cœur GB signale l'accéléromètre MBC7.
 - API C : `ravenemu_sensors()`, `ravenemu_set_solar_light()`, `ravenemu_set_rotation()` et `ravenemu_set_tilt()`, qui couvre aussi l'accéléromètre MBC7. Ces ajouts ne changent pas `RAVENEMU_API_VERSION`.
-- Libretro : gyroscope et inclinaison GBA au stick analogique gauche, et option `ravenemu_gba_solar_light` pour la lumière du capteur solaire, modifiable en cours de partie.
+- ancien adaptateur frontend : gyroscope et inclinaison GBA au stick analogique gauche, et option `ravenemu_gba_solar_light` pour la lumière du capteur solaire, modifiable en cours de partie.
 
 ### Corrigé
 
@@ -612,7 +612,7 @@ Cette version émule les capteurs des cartouches GBA ([#16](https://github.com/G
 
 ## 0.2.0 - 2026-10-15
 
-Cette version simplifie les noms de l'API C ([#14](https://github.com/GhostPunishR/RavenCore/pull/14)). Le changement est incompatible pour les programmes qui utilisent cette API : c'est pourquoi la version mineure augmente. Les moteurs, l'API C++, les cœurs Libretro et les formats de sauvegarde ne changent pas.
+Cette version simplifie les noms de l'API C ([#14](https://github.com/GhostPunishR/RavenCore/pull/14)). Le changement est incompatible pour les programmes qui utilisent cette API : c'est pourquoi la version mineure augmente. Les moteurs, l'API C++, les cœurs ancien adaptateur frontend et les formats de sauvegarde ne changent pas.
 
 ### Modifié
 
@@ -678,10 +678,10 @@ Cette version regroupe les travaux pour sortir RavenGBA de l'état expérimental
 
 #### Cartouches GBA
 
-- Vibration de Drill Dozer et de WarioWare: Twisted! (broche 3 du GPIO), reconnus par leur code de jeu. Elle est transmise à la manette par l'adaptateur Libretro et exposée par `ravenemu_rumble_active()`.
+- Vibration de Drill Dozer et de WarioWare: Twisted! (broche 3 du GPIO), reconnus par leur code de jeu. Elle est transmise à la manette par l'adaptateur ancien adaptateur frontend et exposée par `ravenemu_rumble_active()`.
 - Port série sans câble : les transferts en horloge interne et en mode multijoueur se terminent et lèvent leur interruption. Les jeux qui attendaient la fin d'un transfert ne restent plus bloqués.
 
-#### Libretro
+#### ancien adaptateur frontend
 
 - Options du cœur GBA, appliquées au chargement du jeu : type de sauvegarde (`ravenemu_gba_save_type`) et horloge de cartouche (`ravenemu_gba_rtc`), pour les jeux dont la détection automatique échoue.
 
@@ -692,7 +692,7 @@ Cette version regroupe les travaux pour sortir RavenGBA de l'état expérimental
 
 #### Publication
 
-- Chaque tag `vX.Y.Z` publie une release GitHub : ses notes sont la section de ce journal, et les cœurs Libretro Linux x86-64 y sont joints avec leurs fichiers `.info`.
+- Chaque tag `vX.Y.Z` publie une release GitHub : ses notes sont la section de ce journal, et les cœurs ancien adaptateur frontend Linux x86-64 y sont joints avec leurs fichiers `.info`.
 
 ### Modifié
 
@@ -732,12 +732,12 @@ Cette version regroupe les travaux pour sortir RavenGBA de l'état expérimental
 
 - GBA reste expérimental : il réussit les suites de tests publiques, mais n'a pas encore été essayé sur un large panel de jeux du commerce.
 - Ne sont pas émulés : les capteurs solaire, gyroscopique et d'inclinaison de certaines cartouches GBA, le câble link GBA et le mode UART du port série, le tampon de préchargement de la cartouche et l'exception d'instruction indéfinie.
-- La sauvegarde GBA est détectée par la signature de la bibliothèque du jeu, sans base de données par jeu ; les options Libretro et l'API C corrigent une détection erronée.
-- RetroAchievements n'est toujours pas activé dans les adaptateurs Libretro.
+- La sauvegarde GBA est détectée par la signature de la bibliothèque du jeu, sans base de données par jeu ; les options ancien adaptateur frontend et l'API C corrigent une détection erronée.
+- RetroAchievements n'est toujours pas activé dans les adaptateurs ancien adaptateur frontend.
 
 ## 0.1.0 - 2026-10-12
 
-Première version de RavenCore, alors nommé RavenEmu Cores : les moteurs GB, GBC et GBA de [RavenEmu](https://github.com/GhostPunishR/RavenEmu), importés depuis le commit `312e4af` et rendus utilisables sans l'application Android. Ils sont livrés avec trois adaptateurs Libretro, une API C et un paquet CMake.
+Première version de RavenCore, alors nommé RavenEmu Cores : les moteurs GB, GBC et GBA de [RavenEmu](https://github.com/GhostPunishR/RavenEmu), importés depuis le commit `312e4af` et rendus utilisables sans l'application Android. Ils sont livrés avec trois adaptateurs ancien adaptateur frontend, une API C et un paquet CMake.
 
 ### Ajouté
 
@@ -753,10 +753,10 @@ Première version de RavenCore, alors nommé RavenEmu Cores : les moteurs GB, GB
 - Interface commune `ravenemu::Core` ([`core.hpp`](cores/common/include/ravenemu/core.hpp)) : vidéo, audio stéréo, boutons, sauvegardes batterie avec suivi des générations, états instantanés, câble link, infrarouge et lecture de la mémoire pour les succès.
 - Harnais de conformité GB/GBC pour exécuter des ROMs de test externes, sans les ajouter au dépôt.
 
-#### Libretro
+#### ancien adaptateur frontend
 
-- Trois cœurs : `ravenemu_gb_libretro`, `ravenemu_gbc_libretro` et `ravenemu_gba_libretro`, avec leurs fichiers `.info` pour les frontends Libretro.
-- Noms des boutons dans l'écran de configuration des touches du frontend Libretro ([#7](https://github.com/GhostPunishR/RavenCore/pull/7)).
+- Trois cœurs : `ravenemu_gb_module_historique`, `ravenemu_gbc_module_historique` et `ravenemu_gba_module_historique`, avec leurs fichiers `.info` pour les frontends ancien adaptateur frontend.
+- Noms des boutons dans l'écran de configuration des touches du frontend ancien adaptateur frontend ([#7](https://github.com/GhostPunishR/RavenCore/pull/7)).
 - Vibration des cartouches MBC5 Rumble transmise à la manette ([#7](https://github.com/GhostPunishR/RavenCore/pull/7)).
 - Inclinaison des cartouches MBC7 (Kirby Tilt 'n' Tumble, Command Master) pilotée par le stick analogique gauche ([#7](https://github.com/GhostPunishR/RavenCore/pull/7)).
 
@@ -771,7 +771,7 @@ Première version de RavenCore, alors nommé RavenEmu Cores : les moteurs GB, GB
 #### Build, CI et documentation
 
 - Le build se fait en Release par défaut quand ce dépôt est le projet principal ([#5](https://github.com/GhostPunishR/RavenCore/pull/5)).
-- Une seule source de version, `project(VERSION)` de CMake : elle alimente les cœurs Libretro et leurs fichiers `.info` ([#7](https://github.com/GhostPunishR/RavenCore/pull/7)).
+- Une seule source de version, `project(VERSION)` de CMake : elle alimente les cœurs ancien adaptateur frontend et leurs fichiers `.info` ([#7](https://github.com/GhostPunishR/RavenCore/pull/7)).
 - CI sur Linux, Windows (MSVC), macOS (Apple Clang) et Android (arm64-v8a et armeabi-v7a), avec une passe ASan/UBSan et l'installation du paquet CMake ([#4](https://github.com/GhostPunishR/RavenCore/pull/4), [#6](https://github.com/GhostPunishR/RavenCore/pull/6)).
 - Les actions GitHub tierces sont épinglées sur un commit précis ([#6](https://github.com/GhostPunishR/RavenCore/pull/6)).
 - Test de mutation des états instantanés : des états GB, GBC et GBA altérés doivent être refusés proprement ou s'exécuter sans erreur ([#4](https://github.com/GhostPunishR/RavenCore/pull/4)).
@@ -805,12 +805,12 @@ Un état instantané ou une sauvegarde peut venir d'un tiers. Ces corrections em
 
 - L'en-tête public `ravenemu/gba/core.hpp` ne compilait pas ([#4](https://github.com/GhostPunishR/RavenCore/pull/4)).
 - La lecture des entiers big-endian ne dépend plus de l'ordre d'évaluation du compilateur : avec MSVC, elle pouvait rendre tous les états illisibles ([#5](https://github.com/GhostPunishR/RavenCore/pull/5)).
-- Les cœurs Libretro n'exportent plus que les fonctions `retro_*`. Avant, deux cœurs chargés dans le même frontend pouvaient lier les symboles C++ l'un de l'autre ([#5](https://github.com/GhostPunishR/RavenCore/pull/5)).
+- Les cœurs ancien adaptateur frontend n'exportent plus que les fonctions `retro_*`. Avant, deux cœurs chargés dans le même frontend pouvaient lier les symboles C++ l'un de l'autre ([#5](https://github.com/GhostPunishR/RavenCore/pull/5)).
 - Les avertissements stricts (`-Wconversion`, `/W4`…) ne s'imposent plus aux projets qui utilisent les cœurs ([#5](https://github.com/GhostPunishR/RavenCore/pull/5)).
 - Windows : les tests des moteurs disposent d'une pile de 16 Mio, car la pile par défaut de 1 Mio débordait ([#6](https://github.com/GhostPunishR/RavenCore/pull/6)).
 - Cibles 32 bits (armeabi-v7a, x86) : la lecture de la mémoire des succès ne produit plus d'avertissements de conversion ([#6](https://github.com/GhostPunishR/RavenCore/pull/6)).
-- MSVC : les tests Libretro sont compilés en C++20 ([#6](https://github.com/GhostPunishR/RavenCore/pull/6)).
-- Métadonnées du cœur Libretro Game Boy Color corrigées.
+- MSVC : les tests ancien adaptateur frontend sont compilés en C++20 ([#6](https://github.com/GhostPunishR/RavenCore/pull/6)).
+- Métadonnées du cœur ancien adaptateur frontend Game Boy Color corrigées.
 
 ### Performances
 
@@ -830,7 +830,7 @@ Voici l'origine de ces gains :
 - Les images de l'écran GB/GBC sont stockées sur 16 bits par pixel.
 - La ROM GBA n'est analysée qu'au chargement, et non plus à chaque reset ou chargement d'état.
 - L'API C ne sérialise plus deux fois.
-- Libretro ne recopie la batterie dans `SAVE_RAM` que si le jeu l'a modifiée, et non plus à chaque frame.
+- ancien adaptateur frontend ne recopie la batterie dans `SAVE_RAM` que si le jeu l'a modifiée, et non plus à chaque frame.
 
 ### Compatibilité des états instantanés
 
@@ -840,8 +840,8 @@ Voici l'origine de ces gains :
 
 ### Limites connues
 
-- RetroAchievements n'est pas activé dans les adaptateurs Libretro.
+- RetroAchievements n'est pas activé dans les adaptateurs ancien adaptateur frontend.
 - GBA reste expérimental : la compatibilité et les performances sont encore limitées.
 - Le sens de l'inclinaison MBC7 découle de la physique de l'accéléromètre, mais il n'a pas été vérifié en jeu.
 - La vibration est échantillonnée une fois par frame : les impulsions plus courtes ne sont pas reproduites.
-- Les fichiers Libretro produits par la CI ne fonctionnent que sur Linux x86-64. Ils ne sont pas distribués par un téléchargeur intégré de frontend tiers.
+- Les fichiers ancien adaptateur frontend produits par la CI ne fonctionnent que sur Linux x86-64. Ils ne sont pas distribués par un téléchargeur intégré de frontend tiers.

@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           submodules: recursive
+      - name: Verify no retired frontend references
+        run: bash tools/check_external_frontend_refs.sh
       - name: Fetch public GBA test ROMs
         run: cores/gba/tests/fetch_test_roms.sh "$RUNNER_TEMP/gba-test-roms"
       - name: Fetch public GB/GBC test ROMs
@@ -53,6 +55,8 @@ jobs:
       UBSAN_OPTIONS: print_stacktrace=1
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Verify no retired frontend references
+        run: bash tools/check_external_frontend_refs.sh
       - name: Fetch public GBA test ROMs
         run: cores/gba/tests/fetch_test_roms.sh "$RUNNER_TEMP/gba-test-roms"
       - name: Fetch public GB/GBC test ROMs

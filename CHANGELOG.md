@@ -64,7 +64,7 @@ Cette version ouvre à l'API C les codes de triche et la Game Boy Color d'une Ga
   - Dans CorvusGBA, l'option **BIOS** (catégorie Système) lit `gba_bios.bin` dans le répertoire système fourni par le frontend tiers : « BIOS de CorvusCore » par défaut, « Vrai BIOS, avec son animation » ou « Vrai BIOS, sans animation ». S'il manque, un message le dit et le jeu démarre avec le BIOS de CorvusCore. Le fichier d'informations le déclare comme micrologiciel facultatif.
   - Un état ne se recharge qu'avec le BIOS qui l'a créé. Sinon, le refus le dit : « État pris avec un vrai BIOS GBA, absent ici », « … avec le BIOS de CorvusCore, pas avec un vrai BIOS » ou « … avec un autre BIOS GBA ». Recharger un état garde le BIOS en place.
   - Aucun BIOS n'est fourni.
-- **Capteurs du téléphone ou de la manette via l'ancienne interface.** Les anciens modules frontend lisent ceux de l'appareil par l'interface de capteurs de l'interface historique, avec les conversions de RavenEmu Android :
+- **Capteurs du téléphone ou de la manette via l'ancienne interface.** Les anciens modules frontend lisent ceux de l'appareil par les callbacks de capteurs de l'ancienne interface, avec les conversions de RavenEmu Android :
   - l'accéléromètre incline Kirby Tilt 'n' Tumble et Command Master (MBC7), Yoshi Topsy-Turvy et Koro Koro Puzzle. À plat, l'appareil n'est pas incliné ;
   - le gyroscope fait tourner WarioWare: Twisted! : un demi-tour par seconde donne la pleine échelle ;
   - le capteur de lumière éclaire Boktai si l'option **Lumière du capteur solaire** vaut « Capteur de lumière de l'appareil ». Rien sous 1000 lux, le plein soleil vers 100 000 lux. Sans capteur, un message le dit et le soleil reste à 50 %.
@@ -183,11 +183,11 @@ Cette version complète les anciens modules frontend. Ils sont désormais publi�
 
 ### Ajouté
 
-- **Cœurs l'ancienne intégration frontend pour toutes les plateformes.** Chaque version publie, en plus de Linux x86-64 :
+- **Anciens modules pour frontends tiers sur toutes les plateformes.** Chaque version publie, en plus de Linux x86-64 :
   - Windows x86-64, avec le runtime C++ intégré : pas de redistribuable Visual C++ à installer ;
   - macOS 11 ou plus récent, en une bibliothèque universelle pour Apple Silicon et Intel ;
-  - Android arm64-v8a et armeabi-v7a, nommés les bibliothèques Android spécifiques à l'ancien frontend selon la convention l'ancienne intégration frontend sur Android.
-  - La CI fournit les mêmes archives à chaque PR. l'ancien outil de packaging les assemble : `cores/` et `info/`.
+  - Android arm64-v8a et armeabi-v7a, sous la forme de bibliothèques Android adaptées aux frontends tiers.
+  - La CI fournit les mêmes archives à chaque PR. l'outil de packaging historique les assemble : `cores/` et `info/`.
 - **Options d'image.**
   - Palette des jeux Game Boy : vert (Game Boy) ou gris (Game Boy Pocket).
   - Correction des couleurs LCD pour la Game Boy Color et la Game Boy Advance, la même que RavenEmu Android : environ 28 % de désaturation, puis un gamma de 1,15.
@@ -395,7 +395,7 @@ Cette version active RetroAchievements dans les anciens modules de frontend ([#2
 ### Tests
 
 - l'ancien test GB, l'ancien test GBC et l'ancien test GBA vérifient plusieurs points :
-  - les succès sont annoncés et la carte mémoire est déclarée aux adresses de la console, en descripteurs conformes aux contraintes l'ancienne intégration frontend ;
+  - les succès sont annoncés et la carte mémoire est déclarée aux adresses de la console, en descripteurs conformes aux contraintes de l'ancienne interface frontend ;
   - la sauvegarde et la RAM de cartouche y apparaissent ;
   - un compteur en mémoire de travail y suit chaque image, garde son adresse, et repart d'un état rechargé comme d'un reset.
 - `gb_raven_core` et `gba_raven_core` vérifient qu'une lecture qui franchit une frontière de région rend les mêmes octets que des lectures d'un octet.
@@ -570,7 +570,7 @@ Cette version retire les derniers restes de l'ancien nom, RavenEmu Cores ([#20](
 - **Cibles du paquet CMake** : l'espace de noms devient `RavenCore::`. `RavenEmu::ravenemu_cores` devient `RavenCore::ravencore` et `RavenEmu::ravenemu_c_api` devient `RavenCore::ravenemu_c_api`. Un projet qui consomme une installation de RavenCore doit adapter son `target_link_libraries()`.
 - **Inclusion par `add_subdirectory()` ou FetchContent** : la cible C++ `ravenemu_cores` devient `ravencore`. `ravenemu_c_api`, `ravenemu_common`, `gb_raven_core`, `gbc_raven_core` et `gba_raven_core` gardent leur nom. Le dossier `cores/` ne déclare plus son propre `project()`, vestige de l'import des moteurs depuis RavenEmu : les variables `ravenemu_cores_*` qu'il créait disparaissent. Un projet qui déclare RavenCore avec FetchContent sous le nom `ravenemu_cores`, comme RavenEmu, garde sa variable `ravenemu_cores_SOURCE_DIR`, qui vient de FetchContent.
 
-Le préfixe `ravenemu` reste celui de l'API : fonctions C `ravenemu_*`, espace de noms C++ `ravenemu::`, en-têtes `ravenemu/`, options `RAVENEMU_*` et anciens modules frontend l'ancienne série de modules.
+Le préfixe `ravenemu` reste celui de l'API : fonctions C `ravenemu_*`, espace de noms C++ `ravenemu::`, en-têtes `ravenemu/`, options `RAVENEMU_*` et modules pour frontends tiers (désormais retirés).
 
 ### Compatibilité des états instantanés
 
@@ -836,7 +836,7 @@ Voici l'origine de ces gains :
 - Les images de l'écran GB/GBC sont stockées sur 16 bits par pixel.
 - La ROM GBA n'est analysée qu'au chargement, et non plus à chaque reset ou chargement d'état.
 - L'API C ne sérialise plus deux fois.
-- l'ancienne intégration frontend ne recopie la batterie dans `SAVE_RAM` que si le jeu l'a modifiée, et non plus à chaque frame.
+- L'ancien adaptateur ne recopie la batterie dans `SAVE_RAM` que si le jeu l'a modifiée, et non plus à chaque frame.
 
 ### Compatibilité des états instantanés
 

@@ -9,7 +9,7 @@ target_compile_features(corvuscore_options INTERFACE cxx_std_20)
 
 # Avertissements stricts réservés aux cibles de ce dépôt. Portés par le
 # répertoire et non par `corvuscore_options`, ils ne s'imposent plus au code
-# d'un consommateur. La variable reste visible de `sdk/` et `libretro/`.
+# d'un consommateur. La variable reste visible des moteurs et de `sdk/`.
 if(MSVC)
     set(CORVUSCORE_WARNING_OPTIONS /W4 /permissive- CACHE INTERNAL "Avertissements des cibles CorvusCore")
 else()

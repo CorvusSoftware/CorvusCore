@@ -123,7 +123,7 @@ public:
         if (!machine_) return 0;
         // Espace de RetroAchievements : IWRAM en 0, EWRAM en 0x8000, puis
         // jusqu'à 64 Kio de la puce de sauvegarde en 0x48000. Copie par blocs :
-        // un frontend Libretro relit tout l'espace à chaque image.
+        // la lecture reste indépendante du frontend.
         std::span<const std::uint8_t> save;
         if (const auto* memory = machine_->cartridge.save()) save = memory->data();
         const std::array<std::pair<std::uint64_t, std::span<const std::uint8_t>>, 3> regions{{

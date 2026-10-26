@@ -34,7 +34,7 @@ body:
     attributes:
       label: "Environnement"
       options:
-        - "Libretro / RetroArch"
+        - "CorvusAPI"
         - "Intégration C++ directe"
         - "Runner de conformité GB/GBC"
         - "Autre"

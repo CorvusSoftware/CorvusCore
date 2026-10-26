@@ -32,7 +32,7 @@ La bibliothèque est liée statiquement aux moteurs C++20. Les structures C++ ne
 Pour la compiler :
 
 ```sh
-cmake -S . -B build -DCORVUSCORE_BUILD_LIBRETRO=OFF -DBUILD_TESTING=ON
+cmake -S . -B build -DBUILD_TESTING=ON
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
@@ -52,4 +52,4 @@ find_package(CorvusCore 0.14 REQUIRED)
 target_link_libraries(mon_app PRIVATE CorvusCore::corvuscore_c_api)  # ou CorvusCore::corvuscore en C++
 ```
 
-Passer `-DCMAKE_PREFIX_PATH=/chemin/corvuscore` à la configuration du projet consommateur. Avant la version 1.0, seules les versions de même mineure sont déclarées compatibles. Les adaptateurs Libretro ne sont pas installés : ils se copient dans les dossiers du frontend.
+Passer `-DCMAKE_PREFIX_PATH=/chemin/corvuscore` à la configuration du projet consommateur. Avant la version 1.0, seules les versions de même mineure sont déclarées compatibles. Les modules CorvusAPI sont construits séparément avec `CORVUSCORE_BUILD_CORVUSAPI=ON`.

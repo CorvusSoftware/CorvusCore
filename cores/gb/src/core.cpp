@@ -81,8 +81,8 @@ public:
         const auto ram = m.cartridge->achievement_ram();
         const std::span<const std::uint8_t> wram = m.bus.wram;
         std::size_t count = 0;
-        // Copie par blocs : un frontend Libretro relit tout l'espace à chaque
-        // image. La ROM se lit fenêtre de 16 Kio par fenêtre, telle que le
+        // Copie par blocs pour les outils de lecture mémoire. La ROM se lit
+        // fenêtre de 16 Kio par fenêtre, telle que le
         // contrôleur de cartouche la présente au CPU.
         const auto copy = [&](std::span<const std::uint8_t> source, std::uint64_t base, std::uint64_t a) {
             const auto offset = static_cast<std::size_t>(a - base);

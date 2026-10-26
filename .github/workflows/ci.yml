@@ -1,19 +1,15 @@
 # CorvusCore - CorvusSoftware
 # Copyright (C) 2026 CorvusSoftware
 # SPDX-License-Identifier: AGPL-3.0-only
-
-name: Native cores and Libretro
-# Third-party actions are pinned to a full commit SHA (tag in the comment):
-# a moved or compromised tag cannot change what runs here.
+name: CorvusCore engines and CorvusAPI
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
-
 jobs:
   native:
-    name: C++20 engines, Libretro and tests
+    name: C++ engines, CorvusAPI and tests
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -21,61 +17,36 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           submodules: recursive
-      # Public GBA and GB/GBC test suites: pinned commits or releases, SHA-256
-      # checked, never stored in the repository.
+      - name: Verify no retired frontend references
+        run: bash tools/check_external_frontend_refs.sh
       - name: Fetch public GBA test ROMs
         run: cores/gba/tests/fetch_test_roms.sh "$RUNNER_TEMP/gba-test-roms"
       - name: Fetch public GB/GBC test ROMs
         run: cores/gb/tests/fetch_test_roms.sh "$RUNNER_TEMP/gb-test-roms"
-      - name: Configure CMake
+      - name: Configure
         run: >
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCORVUSCORE_BUILD_CORVUSAPI=ON
           "-DCORVUSCORE_GBA_TEST_ROMS=$RUNNER_TEMP/gba-test-roms"
           "-DCORVUSCORE_GB_TEST_ROMS=$RUNNER_TEMP/gb-test-roms"
-      - name: Build native engines and Libretro
+      - name: Build
         run: cmake --build build --parallel 2
-      - name: Run all synthetic tests
+      - name: Test
         run: ctest --test-dir build --output-on-failure --parallel 2
-      - name: Verify CorvusAPI modules
+      - name: Verify CorvusAPI exports
         run: |
-          for name in gb gbc gba; do
-            test -f "build/libcorvus_${name}.so"
-            nm -D --defined-only "build/libcorvus_${name}.so" | grep -q ' corvus_get_api$'
-            nm -D --defined-only "build/libcorvus_${name}.so" | grep -q ' corvus_get_achievements_api$'
+          for system in gb gbc gba; do
+            test -f "build/libcorvus_${system}.so"
+            nm -D --defined-only "build/libcorvus_${system}.so" | grep -q ' corvus_get_api$'
+            nm -D --defined-only "build/libcorvus_${system}.so" | grep -q ' corvus_get_achievements_api$'
           done
-      - name: Install and consume the CMake package
+      - name: Install and consume SDK
         run: |
           cmake --install build --prefix "$RUNNER_TEMP/corvuscore"
-          cmake -S sdk/tests/package_consumer -B build/package_consumer \
-            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/corvuscore"
+          cmake -S sdk/tests/package_consumer -B build/package_consumer -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/corvuscore"
           cmake --build build/package_consumer
           build/package_consumer/corvuscore_package_consumer
-      - name: Verify Libretro libraries
-        run: |
-          test -f build/libretro/corvuscore_gb_libretro.so
-          test -f build/libretro/corvuscore_gbc_libretro.so
-          test -f build/libretro/corvuscore_gba_libretro.so
-          # Only the Libretro interface may leave a core.
-          for core in build/libretro/*_libretro.so; do
-            extra=$(nm -D --defined-only "$core" | awk '{print $3}' | grep -v '^retro_' || true)
-            if [ -n "$extra" ]; then
-              echo "$core exports non-Libretro symbols:"; echo "$extra"; exit 1
-            fi
-          done
-      - name: Package cores and RetroArch information
-        run: libretro/package.sh build linux-x86_64 corvuscore-libretro-linux-x86_64
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: corvuscore-libretro-linux-x86_64
-          path: corvuscore-libretro-linux-x86_64.tar.gz
-          if-no-files-found: error
-
   sanitizers:
-    # ROMs, sauvegardes et états instantanés sont des entrées non fiables :
-    # toute la suite tourne aussi sous ASan/UBSan, avec les assertions de
-    # bornes de la bibliothèque standard (accès hors limites internes aux
-    # objets, qu'ASan seul ne voit pas).
-    name: C++20 engines under ASan and UBSan
+    name: Engines under ASan and UBSan
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -84,11 +55,13 @@ jobs:
       UBSAN_OPTIONS: print_stacktrace=1
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Verify no retired frontend references
+        run: bash tools/check_external_frontend_refs.sh
       - name: Fetch public GBA test ROMs
         run: cores/gba/tests/fetch_test_roms.sh "$RUNNER_TEMP/gba-test-roms"
       - name: Fetch public GB/GBC test ROMs
         run: cores/gb/tests/fetch_test_roms.sh "$RUNNER_TEMP/gb-test-roms"
-      - name: Configure CMake
+      - name: Configure
         run: >
           cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON
           "-DCORVUSCORE_GBA_TEST_ROMS=$RUNNER_TEMP/gba-test-roms"
@@ -98,13 +71,10 @@ jobs:
           "-DCMAKE_SHARED_LINKER_FLAGS=$SANITIZE"
       - name: Build
         run: cmake --build build --parallel 2
-      - name: Run all synthetic tests
+      - name: Test
         run: ctest --test-dir build --output-on-failure --parallel 2
-
   windows:
-    # Visual Studio is a multi-config generator: build, test and install all
-    # name the Release configuration explicitly.
-    name: C++20 engines and Libretro on Windows (MSVC)
+    name: Windows engines and CorvusAPI
     runs-on: windows-latest
     permissions:
       contents: read
@@ -113,64 +83,45 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      # As released: the C++ runtime is linked in, no redistributable needed.
-      - name: Configure CMake
-        run: cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+        with:
+          submodules: recursive
+      - name: Configure
+        run: cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCORVUSCORE_BUILD_CORVUSAPI=ON
       - name: Build
         run: cmake --build build --config Release --parallel 2
-      - name: Run all synthetic tests
+      - name: Test
         run: ctest --test-dir build -C Release --output-on-failure
-      - name: Install and consume the CMake package
+      - name: Install and consume SDK
         run: |
           cmake --install build --config Release --prefix "$RUNNER_TEMP/corvuscore"
-          # A consumer of static libraries links the same C++ runtime.
-          cmake -S sdk/tests/package_consumer -B build/package_consumer \
-            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/corvuscore" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+          cmake -S sdk/tests/package_consumer -B build/package_consumer -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/corvuscore" -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
           cmake --build build/package_consumer --config Release
           build/package_consumer/Release/corvuscore_package_consumer.exe
-      - name: Package cores and RetroArch information
-        run: libretro/package.sh build windows-x86_64 corvuscore-libretro-windows-x86_64
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: corvuscore-libretro-windows-x86_64
-          path: corvuscore-libretro-windows-x86_64.zip
-
   macos:
-    name: C++20 engines and Libretro on macOS (Apple Clang)
+    name: macOS engines and CorvusAPI
     runs-on: macos-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      # As released: one library for arm64 and x86-64, from macOS 11.
-      - name: Configure CMake
+        with:
+          submodules: recursive
+      - name: Configure
         run: >
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCORVUSCORE_BUILD_CORVUSAPI=ON
           "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
       - name: Build
         run: cmake --build build --parallel 3
-      - name: Run all synthetic tests
+      - name: Test
         run: ctest --test-dir build --output-on-failure
-      - name: Install and consume the CMake package
+      - name: Install and consume SDK
         run: |
           cmake --install build --prefix "$RUNNER_TEMP/corvuscore"
-          cmake -S sdk/tests/package_consumer -B build/package_consumer \
-            -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/corvuscore"
+          cmake -S sdk/tests/package_consumer -B build/package_consumer -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/corvuscore"
           cmake --build build/package_consumer
           build/package_consumer/corvuscore_package_consumer
-      - name: Package cores and RetroArch information
-        run: |
-          for core in build/libretro/*_libretro.dylib; do lipo "$core" -verify_arch arm64 x86_64; done
-          libretro/package.sh build macos-universal corvuscore-libretro-macos-universal
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: corvuscore-libretro-macos-universal
-          path: corvuscore-libretro-macos-universal.zip
-
   android:
-    # Cross-compilation only: nothing runs, but every source and test is
-    # built with the NDK, in 64 and 32 bits (size_t is 32 bits on v7a).
-    name: C++20 engines and Libretro for Android (${{ matrix.abi }})
+    name: Android engines and CorvusAPI (${{ matrix.abi }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -180,32 +131,25 @@ jobs:
         abi: [arm64-v8a, armeabi-v7a]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - name: Locate the NDK
+        with:
+          submodules: recursive
+      - name: Locate NDK
         run: |
           ndk="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_ROOT:-}}"
-          test -n "$ndk" || { echo "No Android NDK on this runner"; exit 1; }
+          test -n "$ndk" || exit 1
           echo "NDK=$ndk" >> "$GITHUB_ENV"
-      - name: Configure CMake
+      - name: Configure
         run: >
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCORVUSCORE_BUILD_CORVUSAPI=ON
           "-DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake"
           -DANDROID_ABI=${{ matrix.abi }} -DANDROID_PLATFORM=android-24
       - name: Build
         run: cmake --build build --parallel 2
-      - name: Verify Libretro libraries
+      - name: Verify modules
         run: |
           nm="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
           for system in gb gbc gba; do
-            core="build/libretro/corvuscore_${system}_libretro.so"
-            test -f "$core"
-            extra=$("$nm" -D --defined-only "$core" | awk '{print $3}' | grep -v '^retro_' || true)
-            if [ -n "$extra" ]; then
-              echo "$core exports non-Libretro symbols:"; echo "$extra"; exit 1
-            fi
+            module="build/libcorvus_${system}.so"
+            test -f "$module"
+            "$nm" -D --defined-only "$module" | grep -q ' corvus_get_api$'
           done
-      - name: Package cores and RetroArch information
-        run: libretro/package.sh build "android-${{ matrix.abi }}" "corvuscore-libretro-android-${{ matrix.abi }}"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: corvuscore-libretro-android-${{ matrix.abi }}
-          path: corvuscore-libretro-android-${{ matrix.abi }}.zip

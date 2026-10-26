@@ -8,7 +8,7 @@ Issue liée : #
 
 - [ ] GB / GBC
 - [ ] GBA
-- [ ] Libretro / SDK
+- [ ] CorvusAPI / SDK
 - [ ] Tests / documentation / CI
 
 ## Vérifications
@@ -23,6 +23,6 @@ Issue liée : #
 
 ## Compatibilité et limites
 
-Précisez les comportements qui restent à vérifier, notamment les jeux concernés, les timings, Libretro ou RetroAchievements.
+Précisez les comportements qui restent à vérifier, notamment les jeux concernés, les timings, CorvusAPI ou RetroAchievements.
 
 **Synchronisation avec RavenEmu Android nécessaire ?** Oui / Non / À déterminer

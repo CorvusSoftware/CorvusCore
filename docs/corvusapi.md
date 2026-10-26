@@ -8,7 +8,7 @@ Option CMake : `-DCORVUSCORE_BUILD_CORVUSAPI=ON`. Initialiser le sous-module
 Chaque module expose `corvus_get_api` et adapte le SDK C natif de CorvusCore.
 
 La distribution des modules Android reste sous le controle de CorvusRetro.
-L'ancien SDK C CorvusCore et les adaptateurs libretro demeurent disponibles.
+Le SDK C de CorvusCore demeure disponible pour les intégrations directes.
 Les identifiants des boutons sont traduits explicitement ; les sauvegardes
 batterie conservent l'acquittement par generation.
 

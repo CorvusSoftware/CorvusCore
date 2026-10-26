@@ -351,7 +351,7 @@ int corvuscore_set_tilt(corvuscore_bridge* handle, int x, int y) {
         handle->core->set_gba_tilt(x, y);
     } else {
         // MBC7 : 81D0h au repos, environ 70h par g ; X baisse quand le côté
-        // droit descend, Y quand le haut s'éloigne (comme l'adaptateur Libretro).
+        // droit descend, Y quand le haut s'éloigne (selon les conventions du moteur).
         constexpr int units_per_g = 0x70;
         handle->core->set_game_boy_acceleration(-x * units_per_g / 0x7fff, -y * units_per_g / 0x7fff);
     }

@@ -24,7 +24,7 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-Pour ne compiler que les moteurs, désactivez Libretro avec `-DCORVUSCORE_BUILD_LIBRETRO=OFF`. La CI compile et teste les moteurs et les trois adaptateurs Libretro sur Linux (GCC, et sous ASan/UBSan), Windows (MSVC) et macOS (Apple Clang), et vérifie la compilation Android (NDK, arm64-v8a et armeabi-v7a).
+Pour construire les modules CorvusAPI, initialisez le sous-module correspondant et activez `-DCORVUSCORE_BUILD_CORVUSAPI=ON`. La CI vérifie les moteurs et les modules sur Linux, Windows, macOS et Android.
 
 Les tests GB/GBC disposent aussi d'un [runner de conformité](cores/gb/tests/README.md). Ses ROMs de test sont externes au dépôt. N'annoncez pas une suite comme réussie sans l'avoir exécutée et sans indiquer les résultats.
 
@@ -36,10 +36,9 @@ Les tests GB/GBC disposent aussi d'un [runner de conformité](cores/gb/tests/REA
 | `cores/gb/` | Moteur Game Boy et composants GB/GBC communs |
 | `cores/gbc/` | Composants CGB et façade du cœur couleur |
 | `cores/gba/` | Moteur Game Boy Advance |
-| `libretro/` | Adaptateurs, métadonnées et tests Libretro |
 | `sdk/` | API C (`bridge.h`), fabrique C++ et paquet CMake |
 
-Conservez la séparation entre la logique matérielle et les frontends. Les dossiers `cores/` ne doivent pas dépendre d'Android, de JNI ou de RetroArch.
+Conservez la séparation entre la logique matérielle et les frontends. Les dossiers `cores/` ne doivent pas dépendre d'Android, de JNI ou d'un frontend particulier.
 
 ## Règles de contribution
 
@@ -47,7 +46,7 @@ Conservez la séparation entre la logique matérielle et les frontends. Les doss
 2. Pour une correction de CPU, PPU, APU, timer, DMA, cartouche ou sauvegarde, ajoutez un test de régression ou expliquez pourquoi ce n'est pas possible.
 3. Documentez les changements de compatibilité, de timings, de sauvegardes batterie et de format des états instantanés, notamment dans la section « Non publié » du [journal des modifications](CHANGELOG.md). Évitez de casser les anciennes sauvegardes sans avertissement.
 4. N'intégrez pas de code copié, traduit ou adapté d'un autre émulateur. Utilisez des spécifications et documentations matérielles publiques, avec leurs références lorsque cela aide à vérifier un comportement.
-5. Pour Libretro, préservez l'interface C et vérifiez le chargement, la vidéo, l'audio, les entrées et les sauvegardes. N'annoncez pas RetroAchievements ou Hardcore sans une implémentation et une validation effectives.
+5. Pour CorvusAPI, préservez le contrat ABI C et vérifiez le chargement, la vidéo, l'audio, les entrées et les sauvegardes. N'annoncez pas RetroAchievements ou Hardcore sans une implémentation et une validation effectives.
 6. Ne joignez aucun fichier de jeu, BIOS, firmware propriétaire ou donnée personnelle. Un nom de jeu et une empreinte SHA-256 facultative peuvent aider à reproduire un bug.
 
 ## Proposer une pull request
@@ -63,4 +62,4 @@ Les changements sont examinés avant intégration. Les tests automatisés doiven
 1. Mettez à jour `project(VERSION)` dans `CMakeLists.txt`, la version indiquée dans le README, et renommez la section « Non publié » du [journal](CHANGELOG.md) en `## X.Y.Z - AAAA-MM-JJ`.
 2. Poussez le tag `vX.Y.Z`.
 
-Le workflow `Release` vérifie que la version et le journal concordent, compile, teste, puis publie la release avec ses notes et les cœurs Libretro Linux.
+Le workflow `Release` vérifie que la version et le journal concordent, compile, teste, puis publie la release avec ses notes et le SDK et les modules CorvusAPI.

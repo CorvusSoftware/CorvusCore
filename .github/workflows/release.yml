@@ -1,44 +1,34 @@
 # CorvusCore - CorvusSoftware
 # Copyright (C) 2026 CorvusSoftware
 # SPDX-License-Identifier: AGPL-3.0-only
-
 name: Release
-# Publishes the GitHub release of a vX.Y.Z tag. The notes are that version's
-# section of CHANGELOG.md; the Libretro cores are attached for Linux x86-64,
-# Windows x86-64, macOS (arm64 and x86-64) and Android (arm64-v8a, armeabi-v7a).
-# Third-party actions are pinned to a full commit SHA (tag in the comment).
+# Publish the tagged SDK and CorvusAPI native modules.
 on:
   push:
     tags: ['v*.*.*']
   workflow_dispatch:
     inputs:
       tag:
-        description: Tag to publish (vX.Y.Z); an existing tag is built from its own commit, a missing one is created on the selected branch head
+        description: Tag to publish (vX.Y.Z)
         required: true
-
 env:
   TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
-
 jobs:
   notes:
-    name: Check the version and extract the release notes
+    name: Verify version and changelog
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    # The one commit every job builds and the release points to.
     outputs:
       sha: ${{ steps.source.outputs.sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - name: Resolve the commit to publish
+      - name: Resolve source
         id: source
         run: |
           if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Tag $TAG is not vX.Y.Z"; exit 1
+            echo "Invalid release version: $TAG"; exit 1
           fi
-          # A tag that already exists is published from its own commit, whatever
-          # branch the run was started on; a missing one is created on the
-          # selected commit. Any other failure to ask the remote stops here.
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
             git fetch --depth=1 origin "refs/tags/$TAG:refs/tags/$TAG"
             sha=$(git rev-parse "refs/tags/$TAG^{commit}")
@@ -48,30 +38,23 @@ jobs:
             if [ "$status" != 2 ]; then exit "$status"; fi
             sha="$GITHUB_SHA"
           fi
-          echo "Publishing $TAG from $sha"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
-      - name: Check the version and extract the release notes
+      - name: Extract release notes
         run: |
           version="${TAG#v}"
-          if ! grep -Fq "project(CorvusCore VERSION $version " CMakeLists.txt; then
-            echo "CMakeLists.txt does not declare version $version"; exit 1
-          fi
-          # Lines between "## X.Y.Z - date" and the next second-level heading.
+          grep -Fq "project(CorvusCore VERSION $version " CMakeLists.txt
           mkdir -p notes
           awk -v heading="## $version " '
             /^## / { if (found) exit; found = index($0, heading) == 1; next }
             found
           ' CHANGELOG.md > notes/notes.md
-          if ! grep -q '[^[:space:]]' notes/notes.md; then
-            echo "CHANGELOG.md has no section for $version"; exit 1
-          fi
+          test -s notes/notes.md
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-notes
           path: notes/notes.md
-
-  cores:
-    name: Libretro cores (${{ matrix.platform }})
+  sdk:
+    name: SDK and CorvusAPI (${{ matrix.platform }})
     needs: notes
     runs-on: ${{ matrix.os }}
     permissions:
@@ -99,43 +82,66 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ needs.notes.outputs.sha }}
-      - name: Configure CMake
+          submodules: recursive
+      - name: Configure
         env:
           PLATFORM: ${{ matrix.platform }}
           ABI: ${{ matrix.abi }}
         run: |
           case "$PLATFORM" in
-            linux-*) cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON ;;
-            # The C++ runtime is linked in: no Visual C++ redistributable needed.
-            windows-*) cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ;;
+            linux-*)
+              cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCORVUSCORE_BUILD_CORVUSAPI=ON ;;
+            windows-*)
+              cmake -S . -B build -DBUILD_TESTING=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCORVUSCORE_BUILD_CORVUSAPI=ON ;;
             macos-*)
               cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON \
+                -DCORVUSCORE_BUILD_CORVUSAPI=ON \
                 "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 ;;
             android-*)
               ndk="${ANDROID_NDK_LATEST_HOME:-${ANDROID_NDK_ROOT:-}}"
-              test -n "$ndk" || { echo "No Android NDK on this runner"; exit 1; }
+              test -n "$ndk" || { echo "Android NDK missing"; exit 1; }
               cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
+                -DCORVUSCORE_BUILD_CORVUSAPI=ON \
                 "-DCMAKE_TOOLCHAIN_FILE=$ndk/build/cmake/android.toolchain.cmake" \
                 "-DANDROID_ABI=$ABI" -DANDROID_PLATFORM=android-24 ;;
           esac
       - name: Build
         run: cmake --build build --config Release --parallel 3
-      - name: Test
-        # Android cores are cross-compiled: nothing runs on the runner.
+      - name: Test native SDK
         if: ${{ !startsWith(matrix.platform, 'android-') }}
         run: ctest --test-dir build -C Release --output-on-failure
-      - name: Package Libretro cores and metadata
+      - name: Package SDK and modules
         env:
           PLATFORM: ${{ matrix.platform }}
-        run: libretro/package.sh build "$PLATFORM" "corvuscore-libretro-$TAG-$PLATFORM"
+        run: |
+          set -euo pipefail
+          stage="corvuscore-$TAG-$PLATFORM"
+          cmake --install build --config Release --prefix "$PWD/$stage/sdk"
+          mkdir -p "$stage/modules"
+          for system in gb gbc gba; do
+            case "$PLATFORM" in
+              windows-*) pattern="corvus_${system}.dll" ;;
+              macos-*) pattern="libcorvus_${system}.dylib" ;;
+              *) pattern="libcorvus_${system}.so" ;;
+            esac
+            module=$(find build -type f -name "$pattern" -print -quit)
+            test -n "$module" || { echo "Missing module $pattern"; exit 1; }
+            cp "$module" "$stage/modules/"
+          done
+          case "$PLATFORM" in
+            linux-*) tar -czf "$stage.tar.gz" "$stage" ;;
+            *) cmake -E tar cf "$stage.zip" --format=zip "$stage" ;;
+          esac
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: cores-${{ matrix.platform }}
-          path: corvuscore-libretro-*
-
+          name: sdk-${{ matrix.platform }}
+          path: |
+            corvuscore-*.zip
+            corvuscore-*.tar.gz
+          if-no-files-found: error
   publish:
     name: Publish GitHub release
-    needs: [notes, cores]
+    needs: [notes, sdk]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -143,12 +149,12 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: artifacts
-      - name: Publish the release
+      - name: Publish archives
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ needs.notes.outputs.sha }}
-        run: >
-          gh release create "$TAG" artifacts/cores-*/corvuscore-libretro-*
-          --repo "$GITHUB_REPOSITORY"
-          --title "CorvusCore ${TAG#v}" --notes-file artifacts/release-notes/notes.md
-          --target "$SHA"
+        run: |
+          mapfile -d '' assets < <(find artifacts -type f -name 'corvuscore-*' -print0)
+          test "${#assets[@]}" -eq 5
+          gh release create "$TAG" "${assets[@]}" --repo "$GITHUB_REPOSITORY" \
+            --title "CorvusCore ${TAG#v}" --notes-file artifacts/release-notes/notes.md --target "$SHA"

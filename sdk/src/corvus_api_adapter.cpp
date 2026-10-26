@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 #include <corvusapi.h>
-#include <corvus/achievements.h>
+#include <achievements.h>
 #include <corvuscore/bridge.h>
 
 #include <array>

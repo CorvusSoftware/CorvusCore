@@ -2,7 +2,7 @@
 // Copyright (C) 2026 CorvusSoftware
 // SPDX-License-Identifier: AGPL-3.0-only
 #include <corvusapi.h>
-#include <corvus/achievements.h>
+#include <achievements.h>
 #include <synthetic_roms.hpp>
 #include <array>
 #include <cstdint>

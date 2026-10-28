@@ -214,6 +214,16 @@ public:
     virtual void run_frame(std::span<const std::span<std::int32_t>> framebuffers, bool render_video) = 0;
 };
 
+/** Prepared reset owns a replacement machine without modifying its owner.
+ * Commit exactly once, without intervening core/endpoint calls; commit allocates
+ * nothing and cannot fail. Destroying an uncommitted plan leaves the core intact.
+ */
+class PreparedReset {
+public:
+    virtual ~PreparedReset() = default;
+    virtual void commit() noexcept = 0;
+};
+
 class Core {
 public:
     virtual ~Core() = default;
@@ -229,6 +239,9 @@ public:
         std::span<const std::uint8_t> battery_ram
     ) = 0;
     virtual void reset() = 0;
+    /** Optional transactional reset. Built-in engines support built-in transports;
+     * unsupported external endpoints are rejected before any machine changes. */
+    [[nodiscard]] virtual std::unique_ptr<PreparedReset> prepare_reset();
     virtual void run_frame(std::span<std::int32_t> framebuffer, bool render_video) = 0;
     virtual void set_button(Button button, bool pressed) = 0;
     // RetroAchievements address space; observational reads, never clock the bus.

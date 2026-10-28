@@ -9,6 +9,10 @@
 
 namespace corvuscore {
 
+std::unique_ptr<PreparedReset> Core::prepare_reset() {
+    throw std::logic_error("Cette console ne prépare pas de reset transactionnel");
+}
+
 // Chaque console fournit son câble (Game Boy, GBA) ; les autres ne se relient pas.
 std::unique_ptr<LinkCable> Core::create_link_cable(std::span<Core* const>) {
     throw std::invalid_argument("Cette console ne se relie pas par un câble link");

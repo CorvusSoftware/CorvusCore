@@ -4,6 +4,23 @@ Ce fichier recense les évolutions notables de CorvusCore (anciennement RavenCor
 
 ## Non publié
 
+### Ajouté
+
+- Extensions CorvusAPI optionnelles version 1 pour les options réelles des moteurs
+  (palettes GB/GBC, matériel de sauvegarde et RTC GBA) et le choix audio du link.
+  Les sélections sont conservées par instance entre les chargements.
+- Sous-système local `corvus.link.two_player` : deux ROMs du même module, écrans
+  côte à côte, entrées séparées, son sélectionnable ou mixé et batteries par contenu
+  avec acquittement indépendant des générations. Les états et lectures mémoire
+  des succès restent indisponibles pendant une session link ; les formats des
+  états solo ne changent pas.
+- Tests dynamiques des trois modules pour la négociation, l’effet des options,
+  les échanges série synthétiques, la composition audio/vidéo, les entrées,
+  le reset et les batteries des deux joueurs.
+- Reset groupé transactionnel dans le SDK : toutes les machines sont préparées
+  avant leur remplacement. Une erreur conserve les machines, leurs batteries et
+  les réglages précédemment appliqués ; les sélections différées restent en attente.
+
 ### Maintenance du dépôt
 
 - Suppression des documents de préparation vides pour les composants GBC non encore extraits.

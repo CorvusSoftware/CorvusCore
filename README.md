@@ -79,7 +79,7 @@ Frontend (CorvusRetro ou application tierce)
 
 Avec `CORVUSCORE_BUILD_CORVUSAPI=ON`, le projet produit trois bibliothèques natives : **`corvus_gb`**, **`corvus_gbc`** et **`corvus_gba`** (avec le préfixe et l'extension propres à la plateforme).
 
-Chaque module exporte `corvus_get_api` et utilise l'en-tête public **`<corvusapi.h>`**. Les modules actuels proposent aussi l'extension facultative de lecture mémoire pour les succès. Le frontend reste responsable de l'affichage, de l'audio système, des fichiers et de la distribution des modules.
+Chaque module exporte `corvus_get_api` et utilise l'en-tête public **`<corvusapi.h>`**. Les extensions facultatives exposent les options du moteur, une session locale à deux joueurs et la lecture mémoire pour les succès en solo. Les batteries sont séparées par joueur ; les états instantanés et les succès ne sont pas disponibles pendant une session link. Le frontend reste responsable de l'affichage, de l'audio système, des fichiers et de la distribution des modules.
 
 → [Fonctionnement des adaptateurs](docs/corvusapi.md)
 
@@ -92,7 +92,7 @@ cmake --install build --config Release --prefix /chemin/installation
 Dans un projet CMake consommateur, renseignez `CMAKE_PREFIX_PATH` vers ce préfixe puis utilisez :
 
 ```cmake
-find_package(CorvusCore 0.14 CONFIG REQUIRED)
+find_package(CorvusCore 0.15 CONFIG REQUIRED)
 target_link_libraries(mon_application PRIVATE CorvusCore::corvuscore_c_api)
 ```
 
@@ -135,7 +135,7 @@ La CI vérifie les moteurs et leurs interfaces sur **Linux, Windows et macOS**, 
 
 ## Versions et distribution
 
-La version définie dans le CMake du dépôt est **0.14.1**. Les versions antérieures et les archives publiées sont disponibles dans les [releases GitHub](https://github.com/CorvusSoftware/CorvusCore/releases).
+La version définie dans le CMake du dépôt est **0.15.0**. Les versions antérieures et les archives publiées sont disponibles dans les [releases GitHub](https://github.com/CorvusSoftware/CorvusCore/releases).
 
 Les workflows de publication prévoient le SDK et les modules natifs pour Linux, Windows, macOS et Android. La distribution des cœurs dans **[CorvusRetro](https://github.com/CorvusSoftware/CorvusRetro)** reste gérée par cette application.
 

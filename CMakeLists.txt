@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 cmake_minimum_required(VERSION 3.22.1)
-project(CorvusCore VERSION 0.14.1 LANGUAGES CXX)
+project(CorvusCore VERSION 0.15.0 LANGUAGES CXX)
 
 # An unoptimized emulator is unusable: default to Release when this repository
 # is the main project and no build type was requested.
@@ -50,6 +50,28 @@ if(CORVUSCORE_BUILD_CORVUSAPI)
         target_compile_options(corvus_${system} PRIVATE ${CORVUSCORE_WARNING_OPTIONS})
     endforeach()
     if(BUILD_TESTING AND UNIX)
+        add_executable(corvuscore_reset_transaction_tests
+            sdk/tests/reset_transaction_test.cpp sdk/src/corvus_api_adapter.cpp)
+        target_compile_definitions(corvuscore_reset_transaction_tests PRIVATE CORVUS_ADAPTER_SYSTEM=2)
+        target_link_libraries(corvuscore_reset_transaction_tests PRIVATE corvuscore_c_api CorvusAPI::CorvusAPI)
+        target_include_directories(corvuscore_reset_transaction_tests PRIVATE cores/common/tests/support)
+        target_compile_options(corvuscore_reset_transaction_tests PRIVATE ${CORVUSCORE_WARNING_OPTIONS})
+        add_test(NAME corvuscore_reset_transaction COMMAND corvuscore_reset_transaction_tests)
+        add_executable(corvuscore_gbc_reset_transaction_tests
+            sdk/tests/reset_transaction_test.cpp sdk/src/corvus_api_adapter.cpp)
+        target_compile_definitions(corvuscore_gbc_reset_transaction_tests PRIVATE CORVUS_ADAPTER_SYSTEM=1)
+        target_link_libraries(corvuscore_gbc_reset_transaction_tests PRIVATE corvuscore_c_api CorvusAPI::CorvusAPI)
+        target_include_directories(corvuscore_gbc_reset_transaction_tests PRIVATE cores/common/tests/support)
+        target_compile_options(corvuscore_gbc_reset_transaction_tests PRIVATE ${CORVUSCORE_WARNING_OPTIONS})
+        add_test(NAME corvuscore_gbc_reset_transaction COMMAND corvuscore_gbc_reset_transaction_tests)
+        add_executable(corvuscore_configuration_api_tests sdk/tests/corvus_api_configuration_test.cpp)
+        target_compile_features(corvuscore_configuration_api_tests PRIVATE cxx_std_20)
+        target_link_libraries(corvuscore_configuration_api_tests PRIVATE CorvusAPI::CorvusAPI ${CMAKE_DL_LIBS})
+        target_include_directories(corvuscore_configuration_api_tests PRIVATE cores/common/tests/support)
+        target_compile_options(corvuscore_configuration_api_tests PRIVATE ${CORVUSCORE_WARNING_OPTIONS})
+        add_dependencies(corvuscore_configuration_api_tests corvus_gb corvus_gbc corvus_gba)
+        add_test(NAME corvuscore_configuration_api COMMAND corvuscore_configuration_api_tests
+            "$<TARGET_FILE:corvus_gb>" "$<TARGET_FILE:corvus_gbc>" "$<TARGET_FILE:corvus_gba>")
         add_executable(corvuscore_achievements_api_tests sdk/tests/corvus_api_achievements_test.cpp)
         target_compile_features(corvuscore_achievements_api_tests PRIVATE cxx_std_20)
         target_compile_definitions(corvuscore_achievements_api_tests PRIVATE CORVUSCORE_VERSION="${PROJECT_VERSION}")

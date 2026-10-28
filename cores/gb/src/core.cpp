@@ -38,15 +38,27 @@ public:
         tilt_sensor_ = tilt_sensor;
     }
     void reset() override {
-        require_loaded();
-        const auto& previous = *machine_->cartridge;
-        const auto battery = machine_->cartridge->export_battery();
-        auto replacement = new_machine(loaded_rom_);
-        if (battery) replacement->cartridge->import_battery(*battery);
-        // Ni écriture en attente oubliée, ni génération déjà rendue réutilisée.
-        replacement->cartridge->continue_after(previous.generation(), previous.dirty());
-        install_machine(std::move(replacement));
+        install_machine(make_reset_machine());
     }
+    [[nodiscard]] std::unique_ptr<PreparedReset> prepare_reset() override {
+        // The SDK uses these built-in endpoints. They always accept a replacement
+        // in the slot released by the old port, without allocation or failure.
+        if ((link_endpoint_ && !dynamic_cast<LocalLinkEndpoint*>(link_endpoint_) &&
+             !dynamic_cast<RemoteLinkEndpoint*>(link_endpoint_)) ||
+            (infrared_endpoint_ && !dynamic_cast<LocalInfraredEndpoint*>(infrared_endpoint_)))
+            throw std::logic_error("Reset transactionnel indisponible pour ce transport externe");
+        struct Plan final : PreparedReset {
+            GameBoyCore& owner;
+            std::unique_ptr<Machine> replacement;
+            Plan(GameBoyCore& target, std::unique_ptr<Machine> next)
+                : owner(target), replacement(std::move(next)) {}
+            void commit() noexcept override { owner.install_prepared_machine(std::move(replacement)); }
+        };
+        auto replacement = make_reset_machine();
+        replacement->bus.rom_patches = rom_patches_;
+        return std::make_unique<Plan>(*this, std::move(replacement));
+    }
+
     void run_frame(std::span<std::int32_t> framebuffer, bool) override {
         require_loaded();
         if (framebuffer.size() < Ppu::frame_pixels) throw std::invalid_argument("Framebuffer trop petit");
@@ -345,7 +357,38 @@ private:
         }
         }
     }
+    [[nodiscard]] std::unique_ptr<Machine> make_reset_machine() const {
+        require_loaded();
+        const auto& previous = *machine_->cartridge;
+        // RTC exports synchronize their cartridge. Use an independent cartridge
+        // snapshot so even an allocation failure leaves the live clock untouched.
+        BinaryWriter out;
+        previous.save_state(out);
+        const auto state = std::move(out).take();
+        auto snapshot = Cartridge::create(loaded_rom_, [this] { return current_epoch(); });
+        BinaryReader in(state);
+        snapshot->load_state(in);
+        const auto battery = snapshot->export_battery();
+        auto replacement = new_machine(loaded_rom_);
+        if (battery) replacement->cartridge->import_battery(*battery);
+        replacement->cartridge->continue_after(previous.generation(), previous.dirty());
+        return replacement;
+    }
+    void install_prepared_machine(std::unique_ptr<Machine> replacement) noexcept {
+        // prepare_reset validated built-in endpoints; no intervening calls occur.
+        machine_->serial.disconnect();
+        machine_->infrared_router.disconnect();
+        static_cast<void>(replacement->serial.connect(link_endpoint_));
+        static_cast<void>(replacement->infrared_router.connect(infrared_endpoint_));
+        finish_install(std::move(replacement));
+    }
+    void finish_install(std::unique_ptr<Machine> replacement) noexcept {
+        apply_compatibility_colors(*replacement);
+        machine_ = std::move(replacement);
+        carried_cycles_ = 0;
+    }
     void install_machine(std::unique_ptr<Machine> replacement) {
+        replacement->bus.rom_patches = rom_patches_;
         if (machine_) {
             machine_->serial.disconnect();
             machine_->infrared_router.disconnect();
@@ -359,10 +402,7 @@ private:
             reconnect_current_endpoints();
             throw std::logic_error("InfraredEndpoint refuse une nouvelle extrémité");
         }
-        replacement->bus.rom_patches = rom_patches_;
-        apply_compatibility_colors(*replacement);
-        machine_ = std::move(replacement);
-        carried_cycles_ = 0;  // la nouvelle machine commence son image
+        finish_install(std::move(replacement));
     }
     void reconnect_current_endpoints() noexcept {
         if (!machine_) return;

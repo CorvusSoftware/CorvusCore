@@ -63,6 +63,10 @@ int corvuscore_load(corvuscore_bridge* handle,
                      const uint8_t* rom, size_t rom_size,
                      const uint8_t* battery, size_t battery_size);
 int corvuscore_reset(corvuscore_bridge* handle);
+/* Reset 1..4 distinct loaded handles atomically. All replacement machines are
+ * prepared before any is installed; failure leaves machines and batteries intact.
+ * Uses built-in transports only. Calls must be serialized with all handles. */
+int corvuscore_reset_group(corvuscore_bridge* const* handles, size_t count);
 int corvuscore_set_button(corvuscore_bridge* handle, int button, int pressed);
 
 /* Dimensions and audio format remain stable for the loaded system.

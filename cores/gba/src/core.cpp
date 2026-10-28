@@ -36,12 +36,16 @@ public:
         rom_hash_ = detail::sha256(rom);
         install(std::move(replacement));
     }
-    void reset() override {
-        require_loaded();
-        auto replacement = new_machine(loaded_rom_, rom_traits_, bios_);
-        replacement->cartridge.keep_battery_of(machine_->cartridge);
-        configure_measurement(*replacement, measuring_time_);
-        install(std::move(replacement));
+    void reset() override { install(make_reset_machine()); }
+    [[nodiscard]] std::unique_ptr<PreparedReset> prepare_reset() override {
+        struct Plan final : PreparedReset {
+            GbaCore& owner;
+            std::unique_ptr<Machine> replacement;
+            Plan(GbaCore& target, std::unique_ptr<Machine> next)
+                : owner(target), replacement(std::move(next)) {}
+            void commit() noexcept override { owner.install(std::move(replacement)); }
+        };
+        return std::make_unique<Plan>(*this, make_reset_machine());
     }
     void run_frame(std::span<std::int32_t> framebuffer, bool render_video) override {
         require_loaded();
@@ -546,6 +550,13 @@ private:
             Bus& bus;
         } memory{machine_->bus};
         for (const auto& cheat : cheats_) run_cheat(cheat, memory);
+    }
+    [[nodiscard]] std::unique_ptr<Machine> make_reset_machine() const {
+        require_loaded();
+        auto replacement = new_machine(loaded_rom_, rom_traits_, bios_);
+        replacement->cartridge.keep_battery_of(machine_->cartridge);
+        configure_measurement(*replacement, measuring_time_);
+        return replacement;
     }
     // L'ancienne machine disparaît : le câble distant oublie son port sans y toucher.
     void install(std::unique_ptr<Machine> replacement) noexcept {

@@ -171,6 +171,22 @@ int corvuscore_reset(corvuscore_bridge* handle) {
     machine_may_change(handle);
     return attempt([&] { require_loaded(handle); handle->core->reset(); });
 }
+int corvuscore_reset_group(corvuscore_bridge* const* handles, size_t count) {
+    return attempt([&] {
+        if (!handles || count == 0 || count > 4) throw std::invalid_argument("Invalid reset group");
+        for (size_t index = 0; index < count; ++index) {
+            require_loaded(handles[index]);
+            for (size_t previous = 0; previous < index; ++previous)
+                if (handles[index] == handles[previous]) throw std::invalid_argument("Duplicate reset handle");
+        }
+        std::array<std::unique_ptr<corvuscore::PreparedReset>, 4> plans;
+        for (size_t index = 0; index < count; ++index) plans[index] = handles[index]->core->prepare_reset();
+        for (size_t index = 0; index < count; ++index) {
+            plans[index]->commit();
+            machine_may_change(handles[index]);
+        }
+    });
+}
 int corvuscore_set_button(corvuscore_bridge* handle, int button, int pressed) {
     machine_may_change(handle);
     return attempt([&] {

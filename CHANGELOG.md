@@ -2,7 +2,13 @@
 
 Ce fichier recense les évolutions notables de CorvusCore (anciennement RavenCore). Son format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet applique le [versionnage sémantique](https://semver.org/lang/fr/). Avant la version 1.0, une version mineure peut changer l'API ou le format des états instantanés : chaque changement de ce type est signalé ici.
 
-## Non publié
+## 0.16.0 - 2026-11-04
+
+Les sauvegardes batterie conservent leur format. Le format interne des états
+n’est pas modifié ; les consommateurs peuvent toutefois imposer une version de
+cœur identique. CorvusRetro conserve les états nommés 0.15.0 et refuse de les
+charger avec un cœur 0.16.0. Conserver l’ancien cœur pour reprendre ces états,
+ou transférer la progression par une sauvegarde batterie .sav/.srm.
 
 ### Ajouté
 

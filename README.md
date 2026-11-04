@@ -92,7 +92,7 @@ cmake --install build --config Release --prefix /chemin/installation
 Dans un projet CMake consommateur, renseignez `CMAKE_PREFIX_PATH` vers ce préfixe puis utilisez :
 
 ```cmake
-find_package(CorvusCore 0.15 CONFIG REQUIRED)
+find_package(CorvusCore 0.16 CONFIG REQUIRED)
 target_link_libraries(mon_application PRIVATE CorvusCore::corvuscore_c_api)
 ```
 
@@ -135,7 +135,7 @@ La CI vérifie les moteurs et leurs interfaces sur **Linux, Windows et macOS**, 
 
 ## Versions et distribution
 
-La version définie dans le CMake du dépôt est **0.15.0**. Les versions antérieures et les archives publiées sont disponibles dans les [releases GitHub](https://github.com/CorvusSoftware/CorvusCore/releases).
+La version définie dans le CMake du dépôt est **0.16.0**. Les versions antérieures et les archives publiées sont disponibles dans les [releases GitHub](https://github.com/CorvusSoftware/CorvusCore/releases).
 
 Les workflows de publication prévoient le SDK et les modules natifs pour Linux, Windows, macOS et Android. La distribution des cœurs dans **[CorvusRetro](https://github.com/CorvusSoftware/CorvusRetro)** reste gérée par cette application.
 

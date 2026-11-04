@@ -50,7 +50,7 @@ cmake --install build --prefix /chemin/corvuscore
 ```
 
 ```cmake
-find_package(CorvusCore 0.14 REQUIRED)
+find_package(CorvusCore 0.16 REQUIRED)
 target_link_libraries(mon_app PRIVATE CorvusCore::corvuscore_c_api)  # ou CorvusCore::corvuscore en C++
 ```
 

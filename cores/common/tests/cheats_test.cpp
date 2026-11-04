@@ -222,9 +222,31 @@ void codebreaker_test() {
     expect_gba_error("", "vide", "code vide accepté");
 }
 
+void budget_test() {
+    Cheat value; value.console=Console::game_boy_advance;
+    corvuscore::CheatOperation operation; operation.action=CheatAction::write;
+    operation.count=65536; value.operations.push_back(operation);
+    corvuscore::validate_cheat_budget(std::span<const Cheat>(&value,1));
+    value.operations.front().count=65537;
+    expect_failure<CheatError>([&] { corvuscore::validate_cheat_budget(std::span<const Cheat>(&value,1)); }, "access budget");
+    operation.count=1; value.operations.assign(1024,operation);
+    corvuscore::validate_cheat_budget(std::span<const Cheat>(&value,1));
+    value.operations.push_back(operation);
+    expect_failure<CheatError>([&] { corvuscore::validate_cheat_budget(std::span<const Cheat>(&value,1)); }, "operation budget");
+    value.operations.assign(1,operation); std::vector<Cheat> list(128,value);
+    corvuscore::validate_cheat_budget(list); list.push_back(value);
+    expect_failure<CheatError>([&] { corvuscore::validate_cheat_budget(list); }, "entry budget");
+    expect_failure<CheatError>([&] { static_cast<void>(gba(std::string(4097,'A'))); }, "source byte budget");
+    const auto slide=gba("42000000 0001+0000FFFF 0000");
+    check(slide.operations.front().count==65535, "slide decoded count");
+    list.assign(2,slide);
+    expect_failure<CheatError>([&] { corvuscore::validate_cheat_budget(list); }, "aggregate expansion budget");
+}
+
 } // namespace
 
 int main() {
+    budget_test();
     encryption_test();
     game_boy_test();
     action_replay_test();

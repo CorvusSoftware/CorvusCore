@@ -7,6 +7,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <vector>
 
 namespace corvuscore {
@@ -66,6 +67,14 @@ struct Cheat {
     Console console{};
     std::vector<CheatOperation> operations;
 };
+
+/** Bounded SDK lists and conservative worst-case per-frame work per player. */
+inline constexpr std::size_t cheat_max_codes = 128;
+inline constexpr std::size_t cheat_max_code_bytes = 4096;
+inline constexpr std::size_t cheat_max_operations = 1024;
+inline constexpr std::uint64_t cheat_max_accesses = 65536;
+/** Reject over-budget lists before any live state is changed. */
+void validate_cheat_budget(std::span<const Cheat> cheats);
 
 /** Mémoire d'une console vue par run_cheat. */
 class CheatMemory {

@@ -76,6 +76,36 @@ void group_failure(int system) {
     check(corvuscore_reset_group(handles,2) && corvuscore_link_run_frame(cable.get(),frames,pixels.size()),
           "paired reset retry succeeds and cable stays usable");
 }
+void cheat_failure(int system) {
+    auto rom=system==CORVUSCORE_GBA ? corvuscore::testing::minimal_gba_rom()
+                                  : corvuscore::testing::minimal_game_boy_rom();
+    Handle handle(corvuscore_create(system),corvuscore_destroy);
+    check(handle && corvuscore_load(handle.get(),rom.data(),rom.size(),nullptr,0), "cheat allocation fixture");
+    const char* baseline_gb[]{"3EA-12B-FAE", "01AA10C0"};
+    const char* next_gb[]{"3EA-12B-FAE+992-00F-FAE", "01BB10C0"};
+    const char* baseline_gba[]{"32000000 00AA", "32000001 0011"};
+    const char* next_gba[]{"32000000 00BB+32000001 0022", "32000002 0033+32000003 0044"};
+    auto baseline=system==CORVUSCORE_GBA ? baseline_gba : baseline_gb;
+    auto next=system==CORVUSCORE_GBA ? next_gba : next_gb;
+    check(corvuscore_set_cheats(handle.get(),baseline,2), "baseline cheat list");
+    arm(); const int success=corvuscore_set_cheats(handle.get(),next,2); const size_t count=disarm();
+    check(success && count>0,"measure all cheat replacement allocations");
+    std::vector<uint32_t> pixels(system==CORVUSCORE_GBA ? 240*160 : 160*144);
+    for(size_t fail=0;fail<count;++fail) {
+        check(corvuscore_set_cheats(handle.get(),baseline,2),"baseline restored");
+        arm(fail); const int result=corvuscore_set_cheats(handle.get(),next,2); const size_t attempts=disarm();
+        check(!result && attempts>=fail+1,"every replacement allocation can fail safely");
+        check(corvuscore_last_error()[0],"allocation failure has diagnostic");
+        check(corvuscore_run_frame(handle.get(),pixels.data(),pixels.size()),"machine advances after refused allocation");
+        uint8_t value=0;
+        check(corvuscore_read_achievement_memory(handle.get(),system==CORVUSCORE_GBA ? 0x8000 : 0xc010,&value,1)==1 &&
+              value==0xaa,"failed replacement preserves previous live writes");
+        check(corvuscore_reset(handle.get()) && corvuscore_run_frame(handle.get(),pixels.data(),pixels.size()),
+              "machine resets after refused allocation");
+        check(corvuscore_read_achievement_memory(handle.get(),system==CORVUSCORE_GBA ? 0x8000 : 0xc010,&value,1)==1 &&
+              value==0xaa,"failed replacement preserves configured writes across reset");
+    }
+}
 void adapter_failure() {
     corvus_core_api base{}; base.struct_size=sizeof(base);
     corvus_options_api options{}; options.struct_size=sizeof(options);
@@ -133,5 +163,6 @@ void operator delete(void* memory, const std::nothrow_t&) noexcept { std::free(m
 void operator delete[](void* memory, const std::nothrow_t&) noexcept { std::free(memory); }
 int main() {
     group_failure(CORVUSCORE_GB); group_failure(CORVUSCORE_GBC); group_failure(CORVUSCORE_GBA);
+    cheat_failure(CORVUS_ADAPTER_SYSTEM);
     adapter_failure(); std::puts("PASS transactional reset and pending-setting allocation failures");
 }

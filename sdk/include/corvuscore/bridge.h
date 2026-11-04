@@ -195,14 +195,18 @@ int corvuscore_set_gbc_colors(corvuscore_bridge* handle, int colors);
  *   Pro Action Replay v3 encrypted as the device shows them
  *   (XXXXXXXX YYYYYYYY), told apart by their decryption.
  * GBA ROM patches, DEADFACE seed changes and encrypted Codebreaker codes are
- * refused. Refusal reasons are in French, meant for the player. */
+ * refused. Refusal reasons are in French, meant for the player.
+ * Each nonempty NUL-terminated entry has at most 4096 bytes excluding NUL.
+ * A list has at most 128 entries, 1024 decoded operations and 65536 worst-case
+ * memory accesses (expanded writes included). See docs/CORVUSAPI-CHEATS.md. */
 /* 1 if `code` is a usable cheat for `system` (enum corvuscore_system), else 0
  * with the reason in corvuscore_last_error(). Needs no handle. */
 int corvuscore_check_cheat(int system, const char* code);
 /* Replaces the active cheats from the next frame; count 0 removes them all.
  * They survive corvuscore_load, corvuscore_reset and state loads, without being
  * stored in states. Returns 0 if an entry is refused: the previous list
- * stays, and corvuscore_last_error() names the entry (from 1) and the reason. */
+ * stays, including on allocation failure. corvuscore_last_error() names an
+ * invalid parsed entry (from 1), or the failed aggregate resource bound. */
 int corvuscore_set_cheats(corvuscore_bridge* handle, const char* const* codes, size_t count);
 
 /* Link cable between handles of this process, for example two games side by

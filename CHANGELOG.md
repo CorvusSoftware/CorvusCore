@@ -6,6 +6,17 @@ Ce fichier recense les évolutions notables de CorvusCore (anciennement RavenCor
 
 ### Ajouté
 
+- Extension optionnelle CorvusAPI `corvus_get_cheats_api` version 1 pour les codes
+  GB/GBC Game Genie et GameShark, GBA Codebreaker brut, GameShark v1/v2 et Action
+  Replay v3 : validation sans effet de bord et liste active indépendante par joueur
+  en solo ou link. L’ABI de base 0 et les formats d’états restent inchangés.
+- Bornes des codes dans le SDK et les modules : 128 entrées de 4096 octets maximum,
+  1024 opérations et 65536 accès développés par liste. Le remplacement prépare
+  toutes les données avant échange, conserve les anciens codes sur toute erreur,
+  y compris une allocation impossible, et expose des motifs de refus en français.
+- Tests de négociation, effets mémoire synthétiques, reset, états, déchargement,
+  isolation des joueurs, limites et pannes d’allocation du remplacement des codes.
+
 - Extensions CorvusAPI optionnelles version 1 pour les options réelles des moteurs
   (palettes GB/GBC, matériel de sauvegarde et RTC GBA) et le choix audio du link.
   Les sélections sont conservées par instance entre les chargements.

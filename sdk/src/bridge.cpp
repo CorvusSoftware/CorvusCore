@@ -51,6 +51,15 @@ struct corvuscore_remote_link {
 namespace {
 thread_local std::string error_message;
 
+std::string_view bounded_cheat_code(const char* code) {
+    if (!code) throw std::invalid_argument("Code de triche absent");
+    std::size_t size = 0;
+    while (size <= corvuscore::cheat_max_code_bytes && code[size]) ++size;
+    if (!size || size > corvuscore::cheat_max_code_bytes)
+        throw std::invalid_argument("Code vide ou trop long (4096 octets maximum)");
+    return {code, size};
+}
+
 void fail(const char* message) noexcept {
     try { error_message = message; }
     catch (...) {}
@@ -62,6 +71,8 @@ int attempt(F&& fn) noexcept {
         error_message.clear();
         fn();
         return 1;
+    } catch (const std::bad_alloc&) {
+        fail("Mémoire pleine");
     } catch (const std::exception& ex) {
         fail(ex.what());
     } catch (...) {
@@ -501,20 +512,20 @@ int corvuscore_check_cheat(int system, const char* code) {
     return attempt([&] {
         const auto console = console_of(system);
         if (!console) throw std::invalid_argument("Invalid system");
-        if (!code) throw std::invalid_argument("Null cheat code");
-        static_cast<void>(corvuscore::parse_cheat(*console, code));
+        static_cast<void>(corvuscore::parse_cheat(*console, bounded_cheat_code(code)));
     });
 }
 int corvuscore_set_cheats(corvuscore_bridge* handle, const char* const* codes, size_t count) {
     return attempt([&] {
         if (!handle || !handle->core) throw std::invalid_argument("Null handle");
-        if (count > 0 && !codes) throw std::invalid_argument("Null cheat list");
+        if (count > corvuscore::cheat_max_codes) throw std::invalid_argument("Trop de codes de triche (128 maximum)");
+        if (count > 0 && !codes) throw std::invalid_argument("Liste de triche absente");
         std::vector<corvuscore::Cheat> cheats;
         cheats.reserve(count);
         for (size_t index = 0; index < count; ++index) {
-            if (!codes[index]) throw std::invalid_argument("Null cheat code");
+            if (!codes[index]) throw std::invalid_argument("Code de triche absent");
             try {
-                cheats.push_back(corvuscore::parse_cheat(handle->core->console(), codes[index]));
+                cheats.push_back(corvuscore::parse_cheat(handle->core->console(), bounded_cheat_code(codes[index])));
             } catch (const corvuscore::CheatError& error) {
                 throw std::runtime_error("code de triche " + std::to_string(index + 1) + " : " + error.what());
             }

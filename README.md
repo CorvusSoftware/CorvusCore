@@ -92,7 +92,7 @@ cmake --install build --config Release --prefix /chemin/installation
 Dans un projet CMake consommateur, renseignez `CMAKE_PREFIX_PATH` vers ce préfixe puis utilisez :
 
 ```cmake
-find_package(CorvusCore 0.15 CONFIG REQUIRED)
+find_package(CorvusCore 0.16 CONFIG REQUIRED)
 target_link_libraries(mon_application PRIVATE CorvusCore::corvuscore_c_api)
 ```
 

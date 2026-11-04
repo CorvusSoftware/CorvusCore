@@ -5,6 +5,7 @@
 #include <corvusapi.h>
 #include <achievements.h>
 #include <corvuscore/bridge.h>
+#include <corvuscore/cheats.hpp>
 
 #include <algorithm>
 #include <array>
@@ -416,6 +417,56 @@ int slot_battery_acknowledge(void* core, uint32_t slot, uint64_t generation) {
     return bridge ? corvuscore_acknowledge_battery(bridge, generation) : 0;
 }
 
+static_assert(CORVUS_CHEATS_MAX_CODES == corvuscore::cheat_max_codes);
+static_assert(CORVUS_CHEATS_MAX_CODE_BYTES == corvuscore::cheat_max_code_bytes);
+uint32_t cheat_capabilities(void* core, uint32_t player) {
+    if (!slot_bridge(core, player)) return 0;
+    if constexpr (CORVUS_ADAPTER_SYSTEM == CORVUSCORE_GBA)
+        return CORVUS_CHEAT_FORMAT_GBA_CODEBREAKER_RAW | CORVUS_CHEAT_FORMAT_GBA_GAMESHARK_V1_V2 |
+               CORVUS_CHEAT_FORMAT_GBA_ACTION_REPLAY_V3;
+    return CORVUS_CHEAT_FORMAT_GB_GAME_GENIE | CORVUS_CHEAT_FORMAT_GB_GAME_SHARK;
+}
+bool cheat_text(const char* code) {
+    if (!code) return false;
+    size_t length = 0;
+    while (length <= CORVUS_CHEATS_MAX_CODE_BYTES && code[length]) ++length;
+    if (!length || length > CORVUS_CHEATS_MAX_CODE_BYTES) return false;
+    for (size_t index = 0; index < length;) {
+        const auto first = static_cast<uint8_t>(code[index++]);
+        if (first < 0x80) continue;
+        uint32_t value = 0, minimum = 0; size_t extra = 0;
+        if (first >= 0xc2 && first <= 0xdf) { value=first&31u; minimum=0x80; extra=1; }
+        else if (first >= 0xe0 && first <= 0xef) { value=first&15u; minimum=0x800; extra=2; }
+        else if (first >= 0xf0 && first <= 0xf4) { value=first&7u; minimum=0x10000; extra=3; }
+        else return false;
+        if (extra > length-index) return false;
+        while (extra--) {
+            const auto next=static_cast<uint8_t>(code[index++]);
+            if ((next&0xc0u)!=0x80u) return false;
+            value=(value<<6u)|(next&63u);
+        }
+        if (value<minimum || value>0x10ffff || (value>=0xd800 && value<=0xdfff)) return false;
+    }
+    return true;
+}
+int validate_cheat(void* core, uint32_t player, const char* code) {
+    auto* instance=static_cast<Instance*>(core);
+    if (!slot_bridge(core,player)) return reject(instance,"Joueur indisponible pour les triches");
+    if (!cheat_text(code)) return reject(instance,"Code absent, trop long ou UTF-8 invalide");
+    instance->error[0]=0;
+    return corvuscore_check_cheat(CORVUS_ADAPTER_SYSTEM,code) ? 1 : reject(instance,corvuscore_last_error());
+}
+int replace_cheats(void* core, uint32_t player, const char* const* codes, size_t count) {
+    auto* instance=static_cast<Instance*>(core);
+    auto* bridge=slot_bridge(core,player);
+    if (!bridge) return reject(instance,"Joueur indisponible pour les triches");
+    if (count>CORVUS_CHEATS_MAX_CODES || (count && !codes)) return reject(instance,"Liste de triche invalide");
+    for (size_t index=0;index<count;++index)
+        if (!cheat_text(codes[index])) return reject(instance,"Code absent, trop long ou UTF-8 invalide");
+    instance->error[0]=0;
+    return corvuscore_set_cheats(bridge,codes,count) ? 1 : reject(instance,corvuscore_last_error());
+}
+
 }  // namespace
 
 extern "C" CORVUS_API_EXPORT int corvus_get_api(uint32_t requested_version,
@@ -451,5 +502,11 @@ extern "C" CORVUS_API_EXPORT int corvus_get_subsystem_api(uint32_t requested_ver
     if (!out || requested_version != CORVUS_SUBSYSTEM_API_VERSION || out->struct_size < sizeof(*out)) return 0;
     *out = {sizeof(*out), CORVUS_SUBSYSTEM_API_VERSION, subsystem_count, describe_subsystem, load_subsystem,
             session_capabilities, slot_battery_size, slot_battery_dirty, slot_battery_copy, slot_battery_acknowledge};
+    return 1;
+}
+
+extern "C" CORVUS_API_EXPORT int corvus_get_cheats_api(uint32_t version, corvus_cheats_api* out) {
+    if (!out || version != CORVUS_CHEATS_API_VERSION || out->struct_size < sizeof(*out)) return 0;
+    *out = {sizeof(*out), CORVUS_CHEATS_API_VERSION, cheat_capabilities, validate_cheat, replace_cheats};
     return 1;
 }

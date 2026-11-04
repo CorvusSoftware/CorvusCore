@@ -116,9 +116,11 @@ public:
         return *machine_;
     }
     void set_cheats(std::span<const Cheat> cheats) override {
+        validate_cheat_budget(cheats);
         for (const auto& cheat : cheats)
             if (cheat.console != Console::game_boy_advance) throw std::invalid_argument("Code de triche d'une autre console");
-        cheats_.assign(cheats.begin(), cheats.end());
+        std::vector<Cheat> next(cheats.begin(), cheats.end());
+        cheats_.swap(next);
     }
     std::size_t read_audio(std::span<std::int16_t> destination) override {
         return machine_ ? machine_->apu.read_samples(destination) : 0;

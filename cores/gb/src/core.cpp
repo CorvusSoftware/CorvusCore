@@ -193,6 +193,7 @@ public:
         if (machine_) apply_compatibility_colors(*machine_);
     }
     void set_cheats(std::span<const Cheat> cheats) override {
+        validate_cheat_budget(cheats);
         std::vector<MemoryBus::RomPatch> patches;
         std::vector<CheatOperation> writes;
         for (const auto& cheat : cheats) {
@@ -206,9 +207,12 @@ public:
                 }
             }
         }
-        rom_patches_ = std::move(patches);
-        cheat_writes_ = std::move(writes);
-        if (machine_) machine_->bus.rom_patches = rom_patches_;
+        // Allocate the live bus copy before changing either stored list.
+        std::vector<MemoryBus::RomPatch> live_patches;
+        if (machine_) live_patches = patches;
+        rom_patches_.swap(patches);
+        cheat_writes_.swap(writes);
+        if (machine_) machine_->bus.rom_patches.swap(live_patches);
     }
     void set_game_boy_acceleration(int x, int y) noexcept override {
         host_acceleration_x_ = x;

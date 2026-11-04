@@ -531,6 +531,7 @@ bool replay_special(const std::vector<Line>& lines, std::size_t& index, std::vec
 } // namespace
 
 Cheat parse_cheat(Console console, std::string_view code) {
+    if (code.empty() || code.size() > cheat_max_code_bytes) throw CheatError("Code vide ou trop long (4096 octets maximum)");
     Cheat cheat;
     cheat.console = console;
     if (console == Console::game_boy_advance) {
@@ -539,7 +540,31 @@ Cheat parse_cheat(Console console, std::string_view code) {
         cheat.operations = parse_game_boy(code);
         if (cheat.operations.empty()) throw CheatError("code vide");
     }
+    validate_cheat_budget(std::span<const Cheat>(&cheat, 1));
     return cheat;
+}
+
+void validate_cheat_budget(std::span<const Cheat> cheats) {
+    if (cheats.size() > cheat_max_codes) throw CheatError("Trop de codes de triche (128 maximum)");
+    std::size_t operations = 0;
+    std::uint64_t accesses = 0;
+    for (const auto& cheat : cheats) {
+        if (cheat.operations.size() > cheat_max_operations - operations)
+            throw CheatError("Liste de triche trop complexe (1024 opérations maximum)");
+        operations += cheat.operations.size();
+        for (const auto& operation : cheat.operations) {
+            switch (operation.action) {
+            case CheatAction::write: accesses += operation.count; break;
+            case CheatAction::add: case CheatAction::bit_or: case CheatAction::bit_and:
+            case CheatAction::write_pointer: accesses += 2; break;
+            case CheatAction::test: case CheatAction::rom_patch: ++accesses; break;
+            case CheatAction::jump: break;
+            default: throw CheatError("Opération de triche inconnue");
+            }
+            if (accesses > cheat_max_accesses)
+                throw CheatError("Liste de triche trop complexe (65536 accès maximum par image)");
+        }
+    }
 }
 
 void run_cheat(const Cheat& cheat, CheatMemory& memory) {
